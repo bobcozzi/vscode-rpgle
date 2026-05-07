@@ -1,0 +1,207 @@
+      *%METADATA                                                       *
+      * %TEXT Handling YYYYMMDD dates in RPG/400 - CVTDAT              *
+      *%EMETADATA                                                      *
+     H*Program Name: XMP1R
+     H*Title: Handling YYYYMMDD dates in RPG/400 using the CVTDAT command.
+     H*Note: See XMP1RA for an example using the QWCCVTDT API.
+     H*Input/Output: Display file XMP1D
+     H*Output: Physical file XMP1PF
+     H*Called by: command line
+     H*External Calls: XMPCL1
+     H*                XMPCL2
+     H*Compilation Notes/Parameters: None
+     H*
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H* Indicator Usage Summary:
+     H* --------- ----- -------
+     H* 50 Invalid start date
+     H* 51 Invalid end date
+     H*
+     F* * * * * * * * * * *   File Specifications   * * * * * * * * * * * * * *
+     FXMP1D   CF  E                    WORKSTN      KINFDS WSDS
+     FXMP1PF  O   E                    DISK                      A
+     F*
+     I* * * * * * * * * * *   Input Specifications  * * * * * * * * * * * *
+     I*
+     I* Structure to separate century and day for Julian dates:
+     ITODATE      DS
+     I                                        1   40OUTCEN
+     I                                        5   70OUTDAY
+     I                                        8   8 FILLER
+     I*
+     I* Workstation File Information Data Structure (INFDS)
+     IWSDS        DS
+     I                                     *STATUS  STATUS
+     I                                      369 369 FKEY
+     I* Function Keys:
+     I              X'33'                 C         F3
+     I              X'39'                 C         F9
+     I              X'3C'                 C         F12
+     I*
+     I* Date in packed format for passing to XMPCL1:
+     I            DS
+     I                                    P   1   40FRMDAT
+     I*
+     I* Date in character format for passing to XMPCL2:
+     I            DS
+     I                                        1   7 FRMJUL
+     I                                        1   40FRMCEN
+     I                                        5   70FRMDAY
+     I*
+     C* * * * * * * * * * *   Calculations   * * * * * * * * * * * * * * * * * *
+     C*
+     C                     MOVE 'N'       EXIT    1
+     C*
+     C* Show screen & process input as long as user does not request an exit:
+     C           EXIT      DOWEQ'N'
+     C                     EXFMTXMP1D100
+     C*
+     C* Process user actions:
+     C                     SELEC
+     C*
+     C           FKEY      WHEQ F3                         F3=Exit
+     C           FKEY      OREQ F12                        F12=Cancel
+     C                     MOVE 'Y'       EXIT
+     C*
+     C           FKEY      WHEQ F9                         F9=Calculate
+     C                     EXSR VALIDT                     Validate dates
+     C           UPDATE    IFEQ 'Y'                        OK to update?
+     C                     EXSR CALCDT                     Calc new dates
+     C                     ENDIF
+     C*
+     C                     OTHER                           Else enter key
+     C                     EXSR VALIDT                     Validate dates
+     C           UPDATE    IFEQ 'Y'                        OK to update?
+     C                     EXSR CALCDT                     Calc new dates
+     C                     WRITEXMP1R                      Write data record
+     C                     CLEARXMP1D100                   Clear input scrn
+     C                     ENDIF
+     C*
+     C                     ENDSL                           END SELEC
+     C*
+     C                     ENDDO                           END DOW EXIT = N
+     C*
+     C                     MOVE *ON       *INLR            EOJ
+     C*
+     C* * * * * * * * * * *   Subroutines   * * * * * * * * * * * * * * * * * *
+     C*           -----    -----
+     C           *INZSR    BEGSR
+     C* Initial Subroutine; executed automatically when program starts:
+     C*
+     C                     Z-ADD*ZERO     STRCEN  40
+     C                     Z-ADD*ZERO     STRDAY  30
+     C                     Z-ADD*ZERO     ENDCEN  40
+     C                     Z-ADD*ZERO     ENDDAY  30
+     C*
+     C* Parameter list for calling XMPCL1 to convert dates:
+     C           CVTDAT    PLIST
+     C                     PARM           FRMDAT           From Date
+     C                     PARM           TODATE  8        To Date
+     C                     PARM           FRMFMT  8        From Format
+     C                     PARM           TOFMT   8        To Format
+     C*
+     C* Parameter list for calling XMPCL2 to convert dates:
+     C           CVTDT2    PLIST
+     C                     PARM           FRMJUL           From Date
+     C                     PARM           TODATE           To Date
+     C                     PARM           FRMFMT           From Format
+     C                     PARM           TOFMT            To Format
+     C*
+     C                     ENDSR                           End *INZSR
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C* Validate start/end dates keyed in by user.
+     C*          ------    -----
+     C           VALIDT    BEGSR
+     C*
+     C                     MOVE 'Y'       UPDATE  1        OK to update?
+     C                     MOVE *OFF      *IN50            Error Indicator
+     C                     MOVE *OFF      *IN51            Error Indicator
+     C*
+     C* Validate start date and convert to YYYYMMDD format:
+     C                     Z-ADDXXSDAT    FRMDAT           Screen to packed
+     C                     MOVEL'*MDY'    FRMFMT    P
+     C                     MOVEL'*YYMD'   TOFMT     P
+     C                     CALL 'XMPCL1'  CVTDAT           Convert date
+     C           TODATE    IFEQ 'BAD     '                 If TODATE = BAD
+     C                     MOVE 'N'       UPDATE            Error: no update
+     C                     MOVE *ON       *IN50             Error Indicator
+     C                     ELSE                            Else TODATE= Date
+     C                     MOVE TODATE    STRDAT            8-byte File Date
+     C                     ENDIF                           End TODATE = BAD
+     C*
+     C* Validate end date and convert to YYYYMMDD format:
+     C                     Z-ADDXXEDAT    FRMDAT           Screen to packed
+     C                     CALL 'XMPCL1'  CVTDAT           Convert date
+     C           TODATE    IFEQ 'BAD     '                 If TODATE = BAD
+     C                     MOVE 'N'       UPDATE            Error: no update
+     C                     MOVE *ON       *IN51             Error Indicator
+     C                     ELSE                            Else TODATE= Date
+     C                     MOVE TODATE    ENDDAT            8-byte File Date
+     C                     ENDIF                           End TODATE = BAD
+     C*
+     C                     ENDSR                           End SR VALIDT
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*          ------    -----
+     C           CALCDT    BEGSR
+     C*
+     C* 1. Get the difference between the two dates.
+     C*  A. Convert start date to Julian format:
+     C                     Z-ADDXXSDAT    FRMDAT           Date to convert
+     C                     MOVE '*LONGJUL'TOFMT            Output date fmt
+     C                     CALL 'XMPCL1 ' CVTDAT           Convert date
+     C                     MOVE OUTCEN    STRCEN           4-digit century
+     C                     MOVE OUTDAY    STRDAY           no. of days
+     C*
+     C*  B. Convert end date to Julian format:
+     C                     Z-ADDXXEDAT    FRMDAT           Date to convert
+     C                     MOVE '*LONGJUL'TOFMT            Output date fmt
+     C                     CALL 'XMPCL1 ' CVTDAT           Convert date
+     C                     MOVE OUTCEN    ENDCEN           4-digit century
+     C                     MOVE OUTDAY    ENDDAY           no. of days
+     C*
+     C*  C. Subtract century and year portions separately:
+     C           ENDCEN    SUB  STRCEN    NOYRS   40       Number of years
+     C*          Convert years to days, allowing for one leap year between:
+     C           STRCEN    DIV  4         TEMP    40
+     C                     MVR            LEAP    10       This a leap year?
+     C           LEAP      IFEQ *ZERO                      Year is leap year
+     C           NOYRS     MULT 366       NODAYS  50       Days in NOYRS
+     C                     ELSE                            Not a leap year
+     C           NOYRS     MULT 365       NODAYS           Days in NOYRS
+     C                     END                             End if leap = 0
+     C           ENDDAY    SUB  STRDAY    DIFF             days difference
+     C                     ADD  NODAYS    DIFF             days + centuries
+     C*
+     C* 2. Add 10 days to end date:
+     C                     ADD  10        ENDDAY           Julian days
+     C*          Convert days to years, allowing for leap year:
+     C           ENDCEN    DIV  4         TEMP
+     C                     MVR            LEAP             This a leap year?
+     C           LEAP      IFEQ *ZERO                      Year is leap year
+     C           ENDDAY    IFGT 366                        past EOY?
+     C                     SUB  366       ENDDAY           subtract 1 year..
+     C                     ADD  1         ENDCEN           and add 1 year
+     C                     END                             End if endday>366
+     C                     ELSE                            Not a leap year
+     C           ENDDAY    IFGT 365                        past EOY?
+     C                     SUB  365       ENDDAY           subtract 1 year..
+     C                     ADD  1         ENDCEN           and add 1 year
+     C                     END                             End if endday>365
+     C                     END                             End if leap = 0
+     C*   Convert new end date from Julian format to YYYYMMDD format:
+     C                     Z-ADDENDCEN    FRMCEN
+     C                     Z-ADDENDDAY    FRMDAY
+     C                     MOVE '*LONGJUL'FRMFMT           Input date fmt
+     C                     MOVEL'*YYMD'   TOFMT     P
+     C                     CALL 'XMPCL2'  CVTDT2           Convert date
+     C                     MOVE TODATE    TERMDT           Move to screen
+     C*
+     C*
+     C* Display current century:
+     C                     Z-ADD*YEAR     CURCEN           Century + Year
+     C*
+     C                     ENDSR                           End SR CALCDT
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

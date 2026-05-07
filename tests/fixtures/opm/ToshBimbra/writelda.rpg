@@ -1,0 +1,49 @@
+      *%METADATA                                                       *
+      * %TEXT How to write the LDA & call a program to read it         *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: WRITELDA
+     H*Purpose:
+     H*Function:
+     H*Notes:
+     H*Input:
+     H*Output:
+     H*Called by:
+     H*External Calls: UPDTLDA
+     H*Compilation Notes/Parameters: None
+     I* * * * * * * * * * *   Input Specifications  * * * * * * * * * * * *
+     I* Program Status Data Structure:
+     I           SDS
+     I                                     *PROGRAM PGM
+     I                                      244 253 WSID
+     I                                      254 263 URID
+     I*
+     I* LDA:
+     IANNE       UDS
+     I                                        1   40NUMBER
+     I                                        5   9 NAME
+     I                                       10  150TIME
+     I*
+     C* * * * * * * * * * *   Calculations   * * * * * * * * * * * * * * * **
+     C*
+     C                     Z-ADD1234      NUMBER
+     C                     MOVE 'CAROL'   NAME
+     C*
+     C                     OUT  *NAMVAR
+     C                     CALL 'UPDTLDA'
+     C                     IN   *NAMVAR
+     C*
+     C                     MOVE *ON       *INLR
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*
+     C* * * * * * * * * * *   Subroutines  * * * * * * * * * * * * * * * * **
+     C*           -----    -----
+     C           *INZSR    BEGSR
+     C* Initial Subroutine; executed automatically when program starts:
+     C*
+     C           *NAMVAR   DEFN *LDA      ANNE
+     C*
+     C                     ENDSR                           END *INZSR
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

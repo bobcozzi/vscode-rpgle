@@ -1,0 +1,7 @@
+      *%METADATA                                                       *
+      * %TEXT Called by A, calls C                                     *
+      *%EMETADATA                                                      *
+     H* Called by A, calls C
+     C* * * * * * * * * * * * Calculations  * * * * * * * * * * * * * *******
+     C                     CALL 'P50930C'
+     C                     SETON                     LR

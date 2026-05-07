@@ -1,0 +1,189 @@
+      *%METADATA                                                       *
+      * %TEXT List processing program                                  *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: UIM2
+     H*Title: UIM 'Work With' List Processing Program
+     H*Function:  1. Called by UIM when more list entries are needed.
+     H*           2. Adds entries to the list; at EOF marks list complete.
+     H*Called by: UIM4 Panel Group
+     H*Notes: UIM application must be opened with Interface level 1
+     H*Input Parameters: UIM Call parms for Interface level 1
+     H* EPCTYP - Type of call - always 6.
+     H* HANDLE - Application Handle supplied by UIM
+     H* EPLIST - List Name
+     H* EPDIR  - Direction - 0 = forward, 1 = backward (not used)
+     H* EP#ENT - Minimum number of entries required (not used)
+     H*External Calls: QUIADDLE  Add List Entry
+     H*                QUISETLA  Set List Attributes
+     H*                QMHSNDPM  Send program message
+     H*Compilation Notes/Parameters: None
+     H*
+     H* Indicator Usage Summary:
+     H* --------- ----- -------
+     H* 99 EOF on read of OAS310P
+     F*****************************************************************
+     FOAS310P IF  E           K        DISK
+     I*
+     I* CHANGEME! Data Fields to Appear on the List Panel:
+     I* Program Variable Buffer LIST (VARRCD = DSPDTL1 in UIM):
+     ILIST        DS
+     I                                        1   5 ZZCARR
+     I                                        6  10 ZZORIG
+     I                                       11  13 ZZZIPP
+     I                                       14  15 ZZZONE
+     I*
+     I* *LDA: Key(s) of last list record read:
+     I           UDS
+     I                                        1  15 DSLIST
+     I* ENDCHG!
+     I*
+     I* Literal Constants: (Specify program names, panel names, etc. here)
+     I              'QCPFMSG   QSYS      'C         QCPFMS
+     I              X'00000000'           C         FWD
+     I*
+     I* Error Data Structures:
+     IAPIERR      DS
+     I I            256                   B   1   40ERRSIZ
+     I I            0                     B   5   80ERRLEN
+     I                                        9  15 ERRMSG
+     I                                       16  16 ERRNBM
+     I                                       17 272 ERRDTA
+     IQMHERR      DS
+     I I            16                    B   1   40ER2SIZ
+     I I            0                     B   5   80ER2LEN
+     I                                        9  15 ER2MIC
+     I                                       16  16 ER2NBM
+     I* Binary Variables used in APIs: (aka BIN(31) & BIN(4))
+     I            DS
+     I                                    B   1   40OPNSCP
+     I                                    B   5   80OPNEXT
+     I                                    B   9  120PUTLEN
+     I                                    B  13  160GETLEN
+     I                                    B  17  200DSPFNC
+     I                                    B  21  240DSPSTK
+     I                                    B  25  280DSPWAI
+     I                                    B  29  320MSGLEN
+     I                                    B  33  360MSGSTK
+     I                                    B  37  400QMHLEN
+     I                                    B  41  440QMHSTK
+     I                                    B  45  480LSTLEN
+     I                                    B  49  520GLELEN
+     I                                    B  53  560POSLEN
+     I*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*
+     C                     MOVELDSLIST    LIST             Beginning key(s)
+     C*
+     C                     EXSR LODFWD                     load list forward
+     C*
+     C           *IN99     IFEQ *ON                        EOF on data =>
+     C                     MOVEL'ALL '    SLACNT    P       list is complete
+     C                     ELSE                            else
+     C                     MOVE 'MORE'    SLACNT            list is not full
+     C                     ENDIF                           END IF *IN99 = On
+     C*
+     C                     EXSR SETLA                      Set List attrib.
+     C*
+     C                     MOVE *ON       *INLR            EOJ
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           *INZSR    BEGSR
+     C*
+     C           *ENTRY    PLIST
+     C                     PARM           EPCTYP  4
+     C                     PARM           HANDLE  8
+     C                     PARM           EPLIST 10
+     C                     PARM           EPDIR   4
+     C                     PARM           EP#ENT  4
+     C*
+     C* CHANGEME!
+     C* Key List for OAS310P:
+     C           ZZKEY     KLIST
+     C                     KFLD           ZZCARR
+     C                     KFLD           ZZORIG
+     C                     KFLD           ZZZIPP
+     C                     Z-ADD15        LSTLEN           Length of LSTRCD
+     C* ENDCHG!
+     C*
+     C                     MOVEL'DSPDTL1' LSTRCD 10 P      List Record
+     C*
+     C                     ENDSR                           END *INZSR
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           LODFWD    BEGSR
+     C* Load the list with values from the data file in a forward direction:
+     C*
+     C                     Z-ADD*ZERO     COUNT   30       # records loaded
+     C                     MOVEL'NEXT'    LSTOPT    P      Next List Entry
+     C*
+     C* CHANGEME!
+     C           ZZKEY     SETGTOAS310P              9999
+     C  N99                READ OAS310P                9999ERR, EOF
+     C* ENDCHG!
+     C*
+     C           *IN99     DOWEQ*OFF                       Load part of file
+     C           COUNT     ANDLE22                         # recs to load
+     C                     MOVELLIST      LSTBUF256 P      from pgm to buffr
+     C*
+     C                     CALL 'QUIADDLE'                 Add List Entry
+     C                     PARM           HANDLE  8        Assigned by UIM
+     C                     PARM           LSTBUF           Program Variables
+     C                     PARM           LSTLEN           Length of LSTBUF
+     C                     PARM           LSTRCD           Variable Record
+     C                     PARM EPLIST    LSTNAM 10        Name of List
+     C                     PARM           LSTOPT  4        Location in List
+     C                     PARM           LSTLEH  4        List Entry Handle
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF                           ErrMsg not blank
+     C*
+     C                     MOVELLIST      DSLIST
+     C                     ADD  1         COUNT            Increment # recs
+     C*
+     C* CHANGEME!
+     C                     READ OAS310P                9999EOF, EOF
+     C* ENDCHG!
+     C*
+     C                     ENDDO                           DOW 99 = OFF
+     C*
+     C                     ENDSR                           LODFWD
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           SETLA     BEGSR
+     C* Use the List Entry Handle to position the list to that entry.
+     C*
+     C                     CALL 'QUISETLA'                 Set List Attribut
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM EPLIST    SLALST 10        List Name
+     C                     PARM           SLACNT  4        List Contents
+     C                     PARM 'LPPGM'   SLAVAR 10        Pgm Dialog Varibl
+     C                     PARM 'SAME'    SLAPOS  4        Position to
+     C                     PARM 'S'       SLATRM  1        Allow Trim
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C                     ENDSR                           SETLA
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           ESCMSG    BEGSR
+     C* Close Application and send Escape Message if an API ends in error:
+     C*
+     C                     SETON                     LR
+     C                     RETRN
+     C                     MOVE *BLANKS   QMHKEY
+     C                     CALL 'QMHSNDPM'
+     C                     PARM 'CPF6A05' ERRMSG  7
+     C                     PARM QCPFMS    QMHFIL 20
+     C                     PARM           ERRDTA
+     C                     PARM 256       QMHLEN
+     C                     PARM '*ESCAPE' QMHTYP 10
+     C                     PARM '*'       QMHPGQ 10
+     C                     PARM 0         QMHSTK
+     C                     PARM           QMHKEY  4
+     C                     PARM           QMHERR
+     C*
+     C                     ENDSR                           ESCMSG
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

@@ -1,0 +1,16 @@
+      *%METADATA                                                       *
+      * %TEXT Called by B, update file TESTSEQ                         *
+      *%EMETADATA                                                      *
+     H* Called by B, update file TESTSEQ
+     H*
+     FTESTSEQ O   E                    DISK                      A
+     C* * * * * * * * * * * * Calculations  * * * * * * * * * * * * * *******
+     C*
+     C                     MOVEL'Ellie'   NAME
+     C                     Z-ADD38.50     AMT
+     C                     MOVE 'F'       SEX
+     C                     Z-ADD1500      INCOME
+     C                     Z-ADD36        AGE
+     C                     WRITETESTSEQR
+     C*
+     C                     MOVE *ON       *INLR

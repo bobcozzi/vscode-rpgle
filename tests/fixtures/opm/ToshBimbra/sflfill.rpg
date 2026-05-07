@@ -1,0 +1,32 @@
+      *%METADATA                                                       *
+      * %TEXT Generate 10,002 NAMEFILE records to fill a subfile       *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: SFLFILL
+     H*Title:                                                          mand)
+     H*Function:
+     H*Input:
+     H*Output:
+     H*Called by:
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     H*
+     H* Indicator Usage Summary:
+     H* --------- ----- -------
+     H* 01
+     H*
+     F* * * * * * * * * * *   File Specifications   * * * * * * * * * * * *
+     F*
+     FNAMEFILEO   E           K        DISK                      A
+     F*
+     C* * * * * * * * * *  Calculations  * * * * * * * * * * * * * * * * * * * *
+     C*
+     C                     MOVEL'Kathy'   NAMEF     P
+     C                     MOVEL'Overton' NAMEL     P
+     C*
+     C                     DO   10002     KEY
+     C                     WRITENAMEREC
+     C                     ENDDO
+     C*
+     C                     MOVE *ON       *INLR
+     C*

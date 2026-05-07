@@ -1,0 +1,90 @@
+      *%METADATA                                                       *
+      * %TEXT Check Spelling of a Word                                 *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: SPELLR
+     H*Title: Check Spelling of a Word
+     H*Called by: SPELL CLP (CPP for SPELL Command)
+     H*External Calls: QTWAIDSP Spelling Aid API
+     H*Compilation Notes/Parameters: None
+     FSPELL   CF  E                    WORKSTN
+     F                                        RN    KSFILE WDWSFL
+     IRCVVAR      DS                            512
+     I                                    B  13  160WRDAVL
+     I                                    B  17  200OFFIWD
+     I                                    B  21  240LENIWD
+     I                                       25  25 CHECK
+     I                                    B  29  320OFFWIE
+     I                                    B  33  360LENWIE
+     IINPDCT     IDS                            172
+     I I            12                    B   1   40DCTOFF
+     I I            1                     B   5   80DCTNUM
+     I I            0                     B   9  120DCTRSV
+     I                                       13  32 DCTNAM
+     IOUTDCT     IDS
+     I                                    B   1   40DCTRTN
+     I                                    B   5   80DCTAVL
+     I                                        9  180OUTNAM
+     I                                       19  280OUTLIB
+     IERROR       DS
+     I I            0                     B   1   40BYTPRV
+     I           IDS
+     I I            512                   B   1   40RCVLEN
+     I                                    B   5   80WRDLEN
+     I I            172                   B   9  120INPLEN
+     I I            28                    B  13  160OUTLEN
+     I            DS
+     I                                    B   1   40OFFCND
+     I                                        1   4 OFFCHR
+     I                                    B   5   80LENCND
+     I                                        5   8 LENCHR
+     I              '(No Suggestions)'    C         MSG
+     C*
+     C           *ENTRY    PLIST
+     C                     PARM           WORD   20
+     C                     PARM           QDCT   20
+     C                     PARM           MISPLD  1
+     C*
+     C                     MOVEL'N'       MISPLD
+     C                     MOVELQDCT      DCTNAM
+     C           ' '       CHEKRWORD      WRDLEN
+     C*
+     C                     CALL 'QTWAIDSP'
+     C                     PARM           RCVVAR
+     C                     PARM           RCVLEN
+     C                     PARM 'AIDW0100'FMTNAM  8
+     C                     PARM           WORD
+     C                     PARM           WRDLEN
+     C                     PARM           INPDCT
+     C                     PARM           INPLEN
+     C                     PARM           OUTDCT
+     C                     PARM           OUTLEN
+     C                     PARM           ERROR
+     C*
+     C           CHECK     IFEQ X'01'
+     C                     MOVEL'Y'       MISPLD
+     C*
+     C           WRDAVL    IFGT 0
+     C                     DO   WRDAVL
+     C           OFFWIE    ADD  1         X       40
+     C           4         SUBSTRCVVAR:X  OFFCHR
+     C                     ADD  4         X
+     C           4         SUBSTRCVVAR:X  LENCHR
+     C                     ADD  LENWIE    OFFWIE
+     C           OFFCND    ADD  1         X
+     C           LENCND    SUBSTRCVVAR:X  SFWORD    P
+     C                     ADD  1         RN      40
+     C                     WRITEWDWSFL
+     C                     END
+     C                     ELSE
+     C                     MOVELMSG       SFWORD
+     C                     ADD  1         RN
+     C                     WRITEWDWSFL
+     C                     END
+     C*
+     C                     MOVELWORD      CTWORD
+     C                     WRITEWDWFTR
+     C                     EXFMTWDWCTL
+     C                     END
+     C*
+     C                     MOVE *ON       *INLR

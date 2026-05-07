@@ -1,0 +1,69 @@
+      *%METADATA                                                       *
+      * %TEXT Using GDDM to draw a line graph                          *
+      *%EMETADATA                                                      *
+     H* GDDM example from pg. 6-7 of manual.
+     H* Draws 2 lines with Y-coordinates of AY1-AY5 and AY6-AY10. X-Axis is
+     H* defined by the AX Array, with values of 1 to 5.
+     E                    AX          5  5 0             X-Axis Values
+     E                    AY         10  5 0             Y-Axis Values
+     IPARAM       DS
+     I* Following GDDM Parms must be defined as 4-byte binary numbers:
+     I                                    B   1   40DTAGRP
+     I                                    B   5   80COUNT
+     I                                    B   9  120KEYTYP
+     I                                    B  13  160FKEY#
+     I                                    B  17  200CONST
+     I**********************************************************************
+     C* Load X-Axis values into array AX:
+     C                     Z-ADD1         AX,1
+     C                     Z-ADD2         AX,2
+     C                     Z-ADD3         AX,3
+     C                     Z-ADD4         AX,4
+     C                     Z-ADD5         AX,5
+     C* Load Y-Axis values for first line (data group) into array AY:
+     C                     Z-ADD5         AY,1
+     C                     Z-ADD3         AY,2
+     C                     Z-ADD5         AY,3
+     C                     Z-ADD5         AY,4
+     C                     Z-ADD11        AY,5
+     C* Load Y-Axis values for second line (data group) into array AY:
+     C                     Z-ADD8         AY,6
+     C                     Z-ADD13        AY,7
+     C                     Z-ADD6         AY,8
+     C                     Z-ADD1         AY,9
+     C                     Z-ADD7         AY,10
+     C* Load literal values into parms for GDDM:
+     C                     MOVEL'FSINIT ' FSINIT  8
+     C                     MOVEL'CHPLOT ' CHPLOT  8
+     C                     MOVEL'ASREAD ' ASREAD  8
+     C                     MOVEL'FSTERM ' FSTERM  8
+     C*
+     C* Initialize GDDM:
+     C                     CALL 'GDDM'
+     C                     PARM           FSINIT
+     C* Construct the graph with 2 data groups (lines), 5 data points
+     C*  in each line, and X and Y values specified in AX and AY arrays:
+     C                     CALL 'GDDM'
+     C                     PARM           CHPLOT           Line or Scatter
+     C                     PARM 2         DTAGRP           Data Groups
+     C                     PARM 5         COUNT            Count
+     C                     PARM           AX               X Values
+     C                     PARM           AY               Y Values
+     C* Display Graph: ('ASREAD' performs all outstanding graphics output.)
+     C                     CALL 'GDDM'
+     C                     PARM           ASREAD           Out: literal
+     C* Following three parms indicate which key user pressed to terminate
+     C*  the graph display:
+     C                     PARM           KEYTYP           In: Key Type
+     C* 0 = Enter key
+     C* 1 = An F-key (its number is in the FKEY# parm.)
+     C* 5 = Clear Key
+     C* 6 = Other keys (Help, Home, Print or a Roll Key.)
+     C* 7 = Device was output-only; next 2 parms are undefined.
+     C                     PARM           FKEY#            In: F-key #
+     C                     PARM           CONST            In: always 0
+     C* Terminate:
+     C                     CALL 'GDDM'
+     C                     PARM           FSTERM
+     C                     SETON                     LR
+     C                     RETRN

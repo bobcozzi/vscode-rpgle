@@ -1,0 +1,243 @@
+      *%METADATA                                                       *
+      * %TEXT Call the 'List Fields' API QUSLFLD                       *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: APIUSLFLD
+     H*Title: Call the 'List Fields' API QUSLFLD
+     H*Function:
+     H* 1. Create a User Space in QTEMP for output of the API.
+     H* 2. Call the List Fields API, QUSLFLD.
+     H* 3. Retrieve the four parts of the User Space in order:
+     H*   A. The Generic Header - similar for all List APIs, it
+     H*      contains the location and size of the other sections.
+     H*   B. Input Section - the parameter fields used to call the API.
+     H*   C. Header Section - general info on the object used by API.
+     H*   D. List Data Section - actual info returned by the API.
+     H*Note: This is only an example of using a List API without
+     H* pointers; the output report was copied from DSPFLDATTR just to
+     H* indicate that the program works - it needs more work to be
+     H* usable.
+     H*Input: parms for file and library to be listed.
+     H*Output: Printed report
+     H*Called by: Menu or Command Line
+     H*External Calls: QUSCRTUS - Create User Space
+     H*                QUSLFLD  - List Fields
+     H*                QUSRTVUS - Retrieve User Space
+     H*Compilation Notes/Parameters: None
+     F* * * * * * * * * * *   File Specifications   * * * * * * * * * * * *
+     F*
+     FQPRINT  O   F     132     OF     PRINTER
+     F*
+     I* * * * * * * * * * *   Input Specifications  * * * * * * * * * * * *
+     I* User Space Generic Header; location & size of other sections:
+     IGENHDR      DS
+     I                                        1  64 USRARA
+     I                                    B  65  680SIZGEN
+     I                                       69  72 RLSLVL
+     I                                       73  80 FMTNAM
+     I                                       81  90 APIUSE
+     I                                       91 103 DATTIM
+     I                                      104 104 INFSTS
+     I                                    B 105 1080SIZUSE
+     I                                    B 109 1120OFFINP
+     I                                    B 113 1160SIZINP
+     I                                    B 117 1200OFFHDR
+     I                                    B 121 1240SIZHDR
+     I                                    B 125 1280OFFLST
+     I                                    B 129 1320SIZLST
+     I                                    B 133 1360NUMLST
+     I                                    B 137 1400SIZENT
+     I*
+     I* User Space Input Section; parameter fields of called API:
+     IINPUT       DS
+     I                                        1  20 USRSPC
+     I                                        1  10 SPCNAM
+     I                                       11  20 SPCLIB
+     I                                       21  28 OUTFMT
+     I                                       29  48 FILLII
+     I                                       29  38 FILNAI
+     I                                       39  48 FILLBI
+     I                                       49  58 RCDFMI
+     I                                       59  59 OVRRID
+     I*
+     I* User Space Header Section; general info on the object used by API:
+     IHEADER      DS
+     I                                        1  20 FILLIH
+     I                                        1  10 FILNAH
+     I                                       11  20 FILLBH
+     I                                       21  30 FILTYP
+     I                                       31  40 RCDFMH
+     I                                    B  41  440RCDLEN
+     I                                       45  57 RCDID
+     I                                       58 107 TEXT
+     I*
+     I* User Space List Data Section; info returned by the API:
+     ILIST        DS
+     I                                        1  10 FLDNAM
+     I                                       11  11 DTATYP
+     I                                       12  12 USAGE
+     I                                    B  13  160OUTBUF
+     I                                    B  17  200INPBUF
+     I                                    B  21  240FLDLEN
+     I                                    B  25  280DIGITS
+     I                                    B  29  320DECPOS
+     I                                       33  82 DESCR
+     I                                       83  84 EDTCDE
+     I                                    B  85  880EDTLEN
+     I                                       89 152 EDTWRD
+     I                                      153 172 COLHD1
+     I                                      173 192 COLHD2
+     I                                      193 212 COLHD3
+     I* API error code parameter
+     IERROR       DS
+     I                                    B   1   40BYTPRV
+     I                                    B   5   80BYTAVA
+     I                                        9  15 MSGID
+     I                                       16  16 ERR###
+     I                                       17 116 MSGDTA
+     I* Define binary work fields
+     I            DS
+     I                                    B   1   40STRPOS
+     I                                    B   5   80STRLEN
+     I                                    B   9  120LENSPC
+     C* * * * * * * * * *  Calculations  * * * * * * * * * * * * * * * * * * * *
+     C*
+     C* Create the user space
+     C                     CALL 'QUSCRTUS'
+     C                     PARM           USRSPC
+     C                     PARM *BLANKS   ATRSPC 10
+     C                     PARM 1024      LENSPC
+     C                     PARM *BLANKS   VALSPC  1
+     C                     PARM '*CHANGE' AUTSPC 10
+     C                     PARM *BLANKS   TXTSPC 50
+     C                     PARM '*YES'    RPLSPC 10
+     C                     PARM           ERROR
+     C*
+     C* Call the List Fields API
+     C                     CALL 'QUSLFLD'
+     C                     PARM           USRSPC
+     C                     PARM 'FLDL0100'OUTFMT
+     C                     PARM           FILLII
+     C                     PARM '*FIRST'  RCDFMI
+     C                     PARM '1'       OVRRID
+     C*
+     C* The generic header starts at position 1; length is 140 bytes:
+     C                     Z-ADD1         STRPOS
+     C                     Z-ADD140       STRLEN
+     C*
+     C* Retrieve the generic header:
+     C                     CALL 'QUSRTVUS'
+     C                     PARM           USRSPC
+     C                     PARM           STRPOS
+     C                     PARM           STRLEN
+     C                     PARM           GENHDR
+     C*
+     C* Load the starting position and length of the input section:
+     C           OFFINP    ADD  1         STRPOS
+     C                     Z-ADDSIZINP    STRLEN
+     C*
+     C* Retrieve the input section:
+     C                     CALL 'QUSRTVUS'
+     C                     PARM           USRSPC
+     C                     PARM           STRPOS
+     C                     PARM           STRLEN
+     C                     PARM           INPUT
+      *
+      *  ************************************************
+      *  * Add your own code here to utilize the fields *
+      *  * in the 'INPUT' data structure.               *
+      *  ************************************************
+      *
+     C* Load the starting position and length of the header section:
+     C           OFFHDR    ADD  1         STRPOS
+     C                     Z-ADDSIZHDR    STRLEN
+     C*
+     C* Retrieve the header section:
+     C                     CALL 'QUSRTVUS'
+     C                     PARM           USRSPC
+     C                     PARM           STRPOS
+     C                     PARM           STRLEN
+     C                     PARM           HEADER
+      *
+      *  ************************************************
+      *  * Add your own code here to utilize the fields *
+      *  * in the 'HEADER' data structure.              *
+      *  ************************************************
+      *
+     C* Load the starting position and length of the list data section:
+     C           OFFLST    ADD  1         STRPOS
+     C                     Z-ADDSIZENT    STRLEN
+     C*
+     C* Repeat for each entry in the list data section:
+     C                     DO   NUMLST
+     C*
+     C* Retrieve an entry from the list data section:
+     C                     CALL 'QUSRTVUS'
+     C                     PARM           USRSPC
+     C                     PARM           STRPOS
+     C                     PARM           STRLEN
+     C                     PARM           LIST
+     C*
+     C           DTATYP    IFEQ 'A'
+     C           DTATYP    OREQ 'L'
+     C           DTATYP    OREQ 'T'
+     C           DTATYP    OREQ 'Z'
+     C                     Z-ADDFLDLEN    LENGTH  50       ALPHA: # BYTES
+     C                     MOVE *ON       *IN01
+     C                     ELSE
+     C                     Z-ADDDIGITS    LENGTH  50       NUM: # DIGITS
+     C                     MOVE *OFF      *IN01
+     C                     ENDIF
+     C                     EXCPTDTL
+     C*
+     C* Increment the starting position to point to the next entry:
+     C                     ADD  SIZENT    STRPOS
+     C                     ENDDO
+     C*
+     C                     SETON                     LR
+     C*
+     C* * * * * * * * * *  Subroutines  * * * * * * * * * * * * * * * * * * * *
+     C*           -----    -----
+     C           *INZSR    BEGSR
+     C* Initial Subroutine; executed automatically when program starts:
+     C*
+     C           *ENTRY    PLIST
+     C                     PARM           FIL    10
+     C                     PARM           LIB    10
+     C*
+     C* Load data structure fields
+     C                     MOVEL'USRSPC'  SPCNAM
+     C                     MOVEL'QTEMP'   SPCLIB
+     C                     MOVELFIL       FILNAI
+     C                     MOVELLIB       FILLBI
+     C                     Z-ADD116       BYTPRV
+     C*
+     C                     ENDSR                           End *INZSR
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     O*********************** Output Specifications ************************
+     OQPRINT  H  103   1P
+     O       OR        OF
+     O                                   10 'APIUSLFLD'
+     O                                   29 'Record Layout for'
+     O                                   34 'file'
+     O                         FIL       45
+     O                                   56 'DATE'
+     O                         UDATE Y   65
+     O                                   75 'Page'
+     O                         PAGE  Z   80
+     O        H  2     1P
+     O       OR        OF
+     O                         TEXT      62
+     O        H  2     1P
+     O       OR        OF
+     O                                   17 'Field Name'
+     O                                   29 'Length'
+     O                                   41 'Description'
+     O        E  1             DTL
+     O                         FLDNAM    17
+     O                         DTATYP    19
+     O                         LENGTHZ   26
+     O                 01                29 '   '
+     O                N01      DECPOS    29 '0        '
+     O                         DESCR     80

@@ -1,0 +1,96 @@
+      *%METADATA                                                       *
+      * %TEXT Retrieval & substringing of messages                     *
+      *%EMETADATA                                                      *
+     H* USEMSG                        16APR91                  
+     H*
+     H* For NLS Translation, tests retrieval of a message and
+     H* substringing to validate user responses in different languages.
+     H* A range of valid replies is tested and an error message issued.
+     H*
+     H* INPUT: A display file containing an I/O field for a user
+     H*        Yes/No response.
+     H*
+     H* OUTPUT: Report showing user entry, retrieved message values and
+     H*         results of comparison.
+     H*         An error message on the screen for invalid replies.
+     H*
+     H* NOTE:   Before executing, override to the Performance Message File:
+     H*            OVRMSGF MSGF(QUSERMSG) TOMSGF(QPFR/QPFRMSGF)
+     H*
+     F*********************** File Specifications **************************
+     FUSEMSGD CF  E                    WORKSTN
+     FQPRINT  O   F      80     OF     PRINTER
+     F*
+     C*********************** Calculations *********************************
+     C           ONCE      DO   0         ONCE    10
+     C* Initialize variables for message retrieval:
+     C                     Z-ADD1         TXTL    40       Text Length = 1
+     C                     Z-ADD4         MSGLVL  10       Get2nd Level Text
+     C* Retrieve the character for 'Yes' in the language being used:
+     C                     MOVE *BLANK    YES     1
+     C                     MOVE 'PFX4441' MSGID
+     C                     EXSR GETMSG                     Find letter for
+     C           1         SUBSTMSGTXT:1  YES              'Y' translation
+     C*          -              ------ -  --->place substring in this field
+     C*     Length              From   start
+     C* Retrieve the character for 'No' in the language being used:
+     C                     MOVE *BLANK    NO      1
+     C                     MOVE 'PFX4442' MSGID
+     C                     EXSR GETMSG                     Find letter for
+     C           1         SUBSTMSGTXT:1  NO               'N' translation
+     C                     END
+     C* Display Format; loop until valid input (DOU always executes once)
+     C           *IN99     DOUEQ'0'                                       **
+     C                     EXFMTUSEMSGRF                   Display Format  *
+     C*                                                                    *
+     C                     MOVE '0'       *IN99            Error Indicator
+     C           USRRSP    IFNE YES                        Validate        *
+     C           USRRSP    ANDNENO                          response       *
+     C                     MOVE '1'       *IN99            Error Indicator *
+     C                     END                             End validate    *
+     C*                                                                    *
+     C                     END                             End Do Until   **
+     C*
+     C           USRRSP    IFEQ YES
+     C                     MOVE 'YES'     MATCH   3
+     C                     ELSE
+     C                     MOVE 'NO '     MATCH
+     C                     END
+     C*
+     C                     SETON                       LR
+     C*
+     C*********************** Subroutines **********************************
+     C*          ------    -----
+     CSR         GETMSG    BEGSR
+     C*          ------    -----
+     C* Use SUBR23R3 to retrieve the values for 'Y' and 'N' from the second
+     C*  level text of translated msgs (Yes and No responses to prompts)
+     C                     CALL 'SUBR23R3'
+     C                     PARM           MSGID   7        for xlated Y/N
+     C                     PARM           MSGTXT  1        Retrieved Text
+     C                     PARM           MSGLVL           2nd Level Text
+     C                     PARM           MSGRC   10       Return Code
+     C                     PARM           TXTL             Text Length
+     CSR                   ENDSR
+     C*
+     O*********************** Output Specifications ************************
+     OQPRINT  H  2 3   1P
+     O       OR        OF
+     O                                    8 'USEMSG'
+     O                                   29 'Message Translation'
+     O                         UDATE Y   65
+     O                                   75 'Page:'
+     O                         PAGE  Z   80
+     O        H  2     1P
+     O       OR        OF
+     O                                    4 'Keyd'
+     O                                    8 'Yes'
+     O                                   12 'No'
+     O                                   15 'RC'
+     O                                   26 'Match?'
+     O        D  1
+     O                         USRRSP     4
+     O                         YES        8
+     O                         NO        12
+     O                         MSGRC     15
+     O                         MATCH     26

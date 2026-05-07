@@ -1,0 +1,593 @@
+      *%METADATA                                                       *
+      * %TEXT Driver for Work-with UIM Panel                           *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: UIM1
+     H*Title: UIM 'Work With' Driver Program
+     H*Function:  1. Displays a "Work With" panel for Shipping Zones
+     H*           2. Retrieves last "Position to" fields and updates on exit
+     H*           3. Prints a listing of the file if requested
+     H*Notes: APIs used for UIM processing and message handling.
+     H*Input:
+     H*Output:
+     H*Called by: Menu or command line
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     H*
+     H* Indicator Usage Summary:
+     H* --------- ----- -------
+     H* 80 NRF on chain to OAS102P
+     H* 81 Error on chain to OAS102P
+     H* 82 Error on write of OAS102P
+     H* 83 Error on update of OAS102P
+     H* 99 NRF on chain to OAS310P
+     F*****************************************************************
+     FOAS310P IF  E           K        DISK
+     FOAS102P UF  E           K        DISK                      A
+     I* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * ****
+     I*
+     I* The following subroutines need to be customized for the file used:
+     I* *INZSR, LODLST and POSLST.
+     I*
+     I* CHANGEME!
+     I* Literal Constants: (Specify program names, panel names, etc. here)
+     I              'UIM4      *LIBL     'C         PNLGRP
+     I              'UIM3      *LIBL     'C         FMPGM
+     I              'UIM2      *LIBL     'C         LPPGM
+     I              'P1        '          C         PNLNAM
+     I              'QSYSPRT   *LIBL     'C         PRINTF
+     I              'File being printed. 'C         PRTMSG
+     I              'QCPFMSG   QSYS      'C         QCPFMS
+     I              'QUSERMSG  *LIBL     'C         USRMSG
+     I*
+     I* Program Variable Buffer LIST (VARRCD = DSPDTL1 in UIM):
+     ILIST        DS
+     I                                        1   5 ZZCARR
+     I                                        6  10 ZZORIG
+     I                                       11  13 ZZZIPP
+     I                                       14  15 ZZZONE
+     I*
+     I* Try using *LIKE to avoid hardcoding field lengths. . .
+     I* *LDA: Key(s) of last list record read:
+     IKEYS       UDS
+     I                                        1  15 DSLIST
+     I*
+     I* "Position To" Fields:
+     I* Program Variable Buffer POSTO (VARRCD = DSPDTL2 in UIM)
+     IPOSTO       DS
+     I                                        1   5 PTCARR
+     I                                        6  10 PTORIG
+     I                                       11  13 PTZIPP
+     I* Copy of "Position To" Fields:
+     IOLDPOS      DS
+     I                                        1   5 OCARR
+     I                                        6  10 OORIG
+     I*
+     I* ENDCHG!
+     I*
+     I* Program Variable Buffer ID (VARRCD = DSPHDR1 in UIM)
+     I* Display program name, date & time at top of panel:
+     IHDR         DS
+     I                                        1  10 PNLID
+     I                                       11  16 PTIME
+     I                                       17  23 PDATE
+     I*
+     I* Error Data Structures:
+     IAPIERR      DS
+     I I            256                   B   1   40ERRSIZ
+     I I            0                     B   5   80ERRLEN
+     I                                        9  15 ERRMSG
+     I                                       16  16 ERRNBM
+     I                                       17 272 ERRDTA
+     IQMHERR      DS
+     I I            16                    B   1   40ER2SIZ
+     I I            0                     B   5   80ER2LEN
+     I                                        9  15 ER2MIC
+     I                                       16  16 ER2NBM
+     I* List Selection Criteria for "Position To":
+     ISELCRI      DS
+     I                                        1  10 SELOPR
+     I                                       11  20 SELVAR
+     I* Binary Variables used in APIs: (aka BIN(31) & BIN(4))
+     I            DS
+     I                                    B   1   40OPNSCP
+     I                                    B   5   80OPNEXT
+     I                                    B   9  120PUTLEN
+     I                                    B  13  160GETLEN
+     I                                    B  17  200DSPFNC
+     I                                    B  21  240DSPSTK
+     I                                    B  25  280DSPWAI
+     I                                    B  29  320MSGLEN
+     I                                    B  33  360MSGSTK
+     I                                    B  37  400QMHLEN
+     I                                    B  41  440QMHSTK
+     I                                    B  45  480LSTLEN
+     I                                    B  49  520GLELEN
+     I                                    B  53  560POSLEN
+     I*
+     I           SDS
+     I                                        1  10 PGM
+     I                                      254 263 USERID
+     I* For date conversion: date in system format.
+     ISYSDAT      DS
+     I                                        1   20MONTH
+     I                                        3   40DAY
+     I                                        5   60CENTRY
+     I                                        7   80YEAR
+     I* For date conversion: date in ISF Format.
+     IOTCDAT      DS
+     I                                        1   10C
+     I                                        2   30Y
+     I                                        4   50M
+     I                                        6   70D
+     I*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C                     EXSR LODLST                     Load the List
+     C*
+     C* Use Set List Attributes to set contents, List Processing Program,
+     C*  and display position attributes:
+     C                     MOVE 'TOP '    SLACNT           List Contents=top
+     C                     MOVEL'LPPGM'   SLAVAR    P      List Process Pgm
+     C                     MOVE 'TOP '    SLAPOS           Display Position
+     C                     EXSR SETLA                      Set list attrib.
+     C*
+     C           DSPFNC    DOWNE-4                         Exit
+     C           DSPFNC    ANDNE-8                         Cancel
+     C*
+     C                     EXSR DSPLST                     Display List
+     C*
+     C                     EXSR GETVAR                     Get Pos To Field
+     C*
+     C* CHANGEME!
+     C           PTCARR    IFNE OCARR                      User changed one
+     C           PTORIG    ORNE OORIG                       of the posto fld
+     C* ENDCHG!
+     C*
+     C           DSPFNC    OREQ 5                          F5 = Refresh
+     C                     EXSR DLTLST                     Delete old list
+     C                     EXSR LODLST                     Reload the list
+     C*
+     C                     MOVE 'TOP '    SLACNT           List Contents
+     C                     MOVEL'LPPGM'   SLAVAR    P      Pgm Dialog Varibl
+     C                     MOVE 'TOP '    SLAPOS           Position to
+     C                     EXSR SETLA                      Set list attrib.
+     C*
+     C* CHANGEME!
+     C                     MOVE PTCARR    OCARR            Save new posto
+     C                     MOVE PTORIG    OORIG
+     C                     ENDIF                           IF posto changed
+     C*
+     C           PTZIPP    IFNE *BLANK                     PosTo requested?
+     C* ENDCHG!
+     C*
+     C                     EXSR POSLST                     Position List
+     C                     Z-ADDPOSLEN    PUTLEN
+     C                     MOVELPOSTO     PUTBUF
+     C                     MOVE POSRCD    PUTREC
+     C                     EXSR PUTVAR                     Update UIM vars.
+     C                     ENDIF                           PTZIPP IFNE BLANK
+     C*
+     C           DSPFNC    IFEQ 21                         F21 pressed
+     C                     EXSR UIMPRT                     Print File Listing
+     C                     ENDIF                           End If F21
+     C*
+     C                     ENDDO                           END DSPFNC DOWNE
+     C*
+     C                     EXSR CLSAPP                     Close Application
+     C*
+     C* Update OAS102P with last "Position To" selections:
+     C                     EXSR UPDOAS
+     C*
+     C                     MOVE *ON       *INLR            EOJ
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           *INZSR    BEGSR
+     C*
+     C* CHANGEME!
+     C* Key List for OAS310P:
+     C           ZZKEY     KLIST
+     C                     KFLD           ZZCARR
+     C                     KFLD           ZZORIG
+     C                     KFLD           ZZZIPP
+     C*
+     C* Key List for OAS102P:
+     C           IDKEY     KLIST
+     C                     KFLD           IDURID
+     C                     KFLD           IDAPPL
+     C                     KFLD           IDPRGM
+     C*
+     C* Initialize Variables:
+     C                     MOVEL'LIST'    LSTNAM 10 P      List Name
+     C                     MOVEL'DSPDTL1' LSTRCD 10 P      List Record
+     C                     Z-ADD15        LSTLEN           Len of LSTRCD
+     C                     MOVEL'DSPDTL2' POSRCD 10 P      PosTo Record
+     C                     Z-ADD13        POSLEN           Len of POSRCD
+     C*
+     C* ENDCHG!
+     C*
+     C* Get default values for "Position To" fields based on last choices:
+     C                     MOVE USERID    IDURID           User ID
+     C                     MOVE 'PRM'     IDAPPL           Parms only
+     C                     MOVE PGM       IDPRGM           Program Name
+     C           IDKEY     CHAINOAS102P             N80    no lock; 80 = NRF
+     C**N80                MOVELIDDTAR    POSTO            Previous values
+     C**N80                MOVELIDDTAR    OLDPOS           Previous values
+     C*
+     C* LDA:
+     C           *NAMVAR   DEFN *LDA      KEYS
+     C*
+     C* Open UIM Application & retrieve Handle (= System ID for this task):
+     C* Note: OPNEXT specifies the Parameter Interface Level for called pgms
+     C*         0 = Call Exit Programs using a single parm: a Space Pointer
+     C*         1 = Multiple parms defined in Entry Plist; use this for RPG.
+     C*         2 = Like 1, but with additional parms.
+     C*
+     C                     CALL 'QUIOPNDA'                 Open Display App.
+     C                     PARM           HANDLE  8        Assigned by UIM
+     C                     PARM PNLGRP    OPNPNL 20        Qual. Panel Group
+     C                     PARM -1        OPNSCP           Open Scope
+     C                     PARM 1         OPNEXT           Interface Level
+     C                     PARM 'N'       OPNHLP  1        Full Screen Help
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C* Move name of List Processing Program to call into Variable Pool:
+     C                     CALL 'QUIPUTV'                  Put Dialog Variab
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM LPPGM     PUTBUF           Output Buffer
+     C                     PARM 20        PUTLEN           Len of dta in buf
+     C                     PARM 'LPREC'   PUTREC           Put to UIM Record
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C* Move name of File Maintenance Program to call into Variable Pool:
+     C                     CALL 'QUIPUTV'                  Put Dialog Variab
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM FMPGM     PUTBUF           Output Buffer
+     C                     PARM 20        PUTLEN           Len of dta in buf
+     C                     PARM 'FMREC'   PUTREC           Put to UIM Record
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C* Build panel header: program name, date & time:
+     C                     MOVELPGM       PNLID     P      Panel Name
+     C*
+     C                     TIME           TIMSTP 140       Time & Date
+     C                     MOVE TIMSTP    SYSDAT           mm/dd/yyyy
+     C           CENTRY    IFEQ 19
+     C                     Z-ADD0         C
+     C                     ELSE
+     C                     Z-ADD1         C
+     C                     ENDIF
+     C                     Z-ADDYEAR      Y
+     C                     Z-ADDMONTH     M
+     C                     Z-ADDDAY       D
+     C                     MOVE OTCDAT    PDATE
+     C                     MOVELTIMSTP    PTIME
+     C*
+     C                     CALL 'QUIPUTV'                  Put Dialog Variab
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM HDR       PUTBUF256        Output Buffer
+     C                     PARM 23        PUTLEN           Len of dta in buf
+     C                     PARM 'DSPHDR1' PUTREC 10        Put to UIM Record
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C* Move "Position to" fields to Panel for display:
+     C                     MOVELPOSTO     PUTBUF           Output Buffer
+     C                     Z-ADDPOSLEN    PUTLEN           Len of dta in buf
+     C                     MOVE POSRCD    PUTREC           Pos to UIM Record
+     C                     EXSR PUTVAR                     Write UIM Record
+     C*
+     C                     ENDSR                           *INZSR
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           LODLST    BEGSR
+     C* Load the list with values from the data file:
+     C*
+     C* CHANGEME!
+     C                     MOVEL'FRST'    LSTOPT    P      First List Entry
+     C                     Z-ADD*ZERO     COUNT   30       # recs loaded.
+     C*
+     C           PTCARR    IFEQ *BLANK                     No specific carr?
+     C                     MOVE *LOVAL    ZZCARR           start at beginning
+     C                     ELSE                            Else
+     C                     MOVE PTCARR    ZZCARR           start at pos to
+     C                     ENDIF                           IF PTCARR blank
+     C*
+     C           PTORIG    IFEQ *BLANK                     No specific orig?
+     C                     MOVE *LOVAL    ZZORIG           start at beginnin
+     C                     ELSE                            Else
+     C                     MOVE PTORIG    ZZORIG           start at pos to
+     C                     ENDIF                           IF PTORIG blank
+     C*
+     C                     MOVE *LOVAL    ZZZIPP           Load all zip cdes
+     C*
+     C           ZZKEY     SETLLOAS310P              98    Position file
+     C   98                READPOAS310P                  99EOF
+     C  N98                READ OAS310P                  99EOF
+     C*
+     C           *IN99     DOWEQ*OFF                       Load partial list
+     C           COUNT     ANDLE22                         22 recs at a time
+     C                     MOVELLIST      LSTBUF256 P      PF data -> UIM
+     C*
+     C                     CALL 'QUIADDLE'                 Add List Entry
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM           LSTBUF           Program Variables
+     C                     PARM           LSTLEN           Length of LSTBUF
+     C                     PARM           LSTRCD           Variable Record
+     C                     PARM           LSTNAM           Name of List
+     C                     PARM           LSTOPT  4        Location in List
+     C                     PARM           LSTLEH  4        List Entry Handle
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF                           ErrMsg not blank
+     C*
+     C* Update LDA with key(s) of last record loaded in list:
+     C                     MOVELLIST      DSLIST
+     C                     OUT  KEYS
+     C*
+     C                     ADD  1         COUNT            Increment # recs
+     C                     READ OAS310P                  99EOF
+     C* ENDCHG!
+     C*
+     C                     MOVEL'NEXT'    LSTOPT    P      Next List Entry
+     C                     ENDDO                           DOW 99 = OFF
+     C*
+     C                     ENDSR                           LODLST
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           DSPLST    BEGSR
+     C* Display the 'Work With...' Panel: (like EXFMT)
+     C*
+     C                     Z-ADD*ZERO     DSPFNC           Initialize
+     C                     CALL 'QUIDSPP'                  Display Panel
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM           DSPFNC           (Input) Function
+     C                     PARM PNLNAM    DSPPNL 10        Panel Name
+     C                     PARM 'Y'       DSPRDP  1        Redisplay Option
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C                     ENDSR                           DSPLST
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           DLTLST    BEGSR
+     C* Delete list:
+     C*
+     C                     CALL 'QUIDLTL'                  Delete List
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM           LSTNAM           Name of List
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C                     ENDSR                           DLTLST
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           SETLA     BEGSR
+     C*Set List Attributes specifies list contents, List Processing Program,
+     C*  and display position attributes:
+     C*
+     C                     CALL 'QUISETLA'                 Set List Attribut
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM LSTNAM    SLALST 10        List Name
+     C                     PARM           SLACNT  4        List Contents
+     C                     PARM           SLAVAR 10        Pgm Dialog Varibl
+     C                     PARM           SLAPOS  4        Dsply Pos'n Attr.
+     C                     PARM 'S'       SLATRM  1        Allow Trim
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C                     ENDSR                           SETLA
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           GETVAR    BEGSR
+     C* Get Dialog Variables from Panel:
+     C*
+     C                     CALL 'QUIGETV'                  Get Variable
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM           POSTO            Pgm Var. Buffer
+     C                     PARM POSLEN    GETLEN           Length of VARBUF
+     C                     PARM POSRCD    GETREC 10        UIM Var Rec Name
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C                     ENDSR                           GETVAR
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           POSLST    BEGSR
+     C* Position List to the "Position To" Entry from the Panel:
+     C*
+     C                     Z-ADDLSTLEN    PUTLEN           Length of List
+     C                     MOVE LSTRCD    PUTREC           Buffer
+     C                     EXSR PUTVAR                     Put UIM Variable
+     C*
+     C* Build Selection Criteria (SELCRI):
+     C                     MOVEL'GE'      SELOPR    P      >=
+     C                     MOVEL'ZZZIPP'  SELVAR    P      Zip Prefix
+     C*
+     C* Find the List Entry Handle of the entry matching the "Position To"
+     C                     CALL 'QUIGETLE'                 Get List Entry
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM           LSTBUF           Pgm Variable Buff
+     C                     PARM LSTLEN    GLELEN           Length of VARBUF
+     C                     PARM LSTRCD    GLEREC 10        UIM Var Rec Name
+     C                     PARM LSTNAM    GLELST 10        List Name
+     C                     PARM 'FSLT'    GLEPOS  4        Find by Selection
+     C                     PARM 'Y'       GLECPY  1        Copy Option
+     C                     PARM           SELCRI           Selection Critera
+     C                     PARM *BLANK    GLEHDL  4        Selection Handle
+     C                     PARM 'Y'       GLEEXT  1        Extend Option
+     C                     PARM           GLELEH  4        List Entry Handle
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C* Use the List Entry Handle to position the list to that entry.
+     C                     MOVE 'SAME'    SLACNT           List Contents
+     C                     MOVEL'LPPGM'   SLAVAR    P      Pgm Dialog Varibl
+     C                     MOVE GLELEH    SLAPOS           Position to LEH
+     C                     EXSR SETLA
+     C*
+     C                     ENDSR                           POSLST
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           PUTVAR    BEGSR
+     C* Put a Dialog Variable into the UIM Variable Pool.
+     C*
+     C                     CALL 'QUIPUTV'                  Put Dialog Variab
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM POSTO     PUTBUF256        Output Buffer
+     C                     PARM           PUTLEN           Len of dta in buf
+     C                     PARM           PUTREC 10        Put to UIM Record
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C                     ENDSR                           PUTVAR
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           UIMPRT    BEGSR
+     C* Opens a UIM Print file, prints headings & data, then closes it.
+     C*
+     C                     MOVEL'PRTPNL'  PRTPNL    P
+     C                     MOVEL'PRTPNL'  PRTALT    P
+     C                     MOVEL'PRTHEAD' PRTHDG    P
+     C*
+     C                     CALL 'QUIADDPA'                 Open Print File
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM PRINTF    PRTFIL 20        Printer File Name
+     C                     PARM           PRTALT 10        Alt. Spooled File
+     C                     PARM 'F'       PRTSHR  1        Share Opn Dta Pth
+     C                     PARM           PRTUSR 10        User Data
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C                     CALL 'QUIPRTP'                  Print Headings
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM           PRTHDG 10        Print Panel Name
+     C                     PARM 'Y'       PRTEJT  1        Page Eject
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C                     CALL 'QUIPRTP'                  Print Headings
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM           PRTPNL 10        Print Panel Name
+     C                     PARM 'N'       PRTEJT  1        Page Eject
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C                     CALL 'QUIRMVPA'                 Remove Print App.
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM 'M'       PRTOPT  1        Close Option
+     C                     PARM           APIERR           Error DS
+     C           ERRMSG    IFNE *BLANK                     If API Failed,
+     C                     EXSR ESCMSG                      send Escape Msg.
+     C                     ENDIF
+     C*
+     C                     MOVELPRTMSG    MSGDTA    P
+     C                     EXSR SNDMSG                     Print Submitted
+     C*
+     C                     ENDSR                           UIMPRT
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           SNDMSG    BEGSR
+     C* Send Informational Message to Program Message Queue.
+     C*
+     C                     MOVE *BLANKS   QMHKEY
+     C                     CALL 'QMHSNDPM'
+     C                     PARM *BLANK    QMHMSG  7
+     C                     PARM *BLANK    QMHFIL
+     C                     PARM           MSGDTA 76
+     C                     PARM 76        QMHLEN
+     C                     PARM '*INFO'   QMHTYP
+     C                     PARM '*EXT'    QMHPGQ
+     C                     PARM 0         QMHSTK
+     C                     PARM           QMHKEY
+     C                     PARM           QMHERR
+     C*
+     C                     ENDSR                           SNDMSG
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           ESCMSG    BEGSR
+     C* Close Application and send Escape Message if an API ends in error:
+     C*
+     C                     EXSR CLSAPP                     Close Application
+     C*
+     C                     MOVE *BLANKS   QMHKEY
+     C                     CALL 'QMHSNDPM'
+     C                     PARM           ERRMSG           Message ID
+     C                     PARM QCPFMS    QMHFIL 20        Qualified msg fil
+     C                     PARM           ERRDTA           Substitution data
+     C                     PARM 256       QMHLEN           Length of MSGDTA
+     C                     PARM '*ESCAPE' QMHTYP 10        Message Type
+     C                     PARM '*'       QMHPGQ 10        Message Queue
+     C                     PARM 0         QMHSTK           Call Stack Countr
+     C                     PARM           QMHKEY  4        Supplied by systm
+     C                     PARM           QMHERR           Error DS
+     C*
+     C                     ENDSR                           ESCMSG
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           CLSAPP    BEGSR
+     C* Close the UIM Application:
+     C                     CALL 'QUICLOA'                  Close Application
+     C                     PARM           HANDLE           Assigned by UIM
+     C                     PARM 'M'       CLOOPT  1        Normal Close
+     C                     PARM           APIERR           Error DS
+     C*
+     C                     ENDSR                           CLSAPP
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C           UPDOAS    BEGSR
+     C* Update OAS102P with last "Position To" values used:
+     C*
+     C           IDKEY     CHAINOAS102P              8081  NRF, ERR
+     C*
+     C                     TIME           TIMSTP 140       Get date/time
+     C                     MOVE TIMSTP    SYSDAT           mm/dd/yyyy
+     C           CENTRY    IFEQ 19
+     C                     Z-ADD1         C
+     C                     ELSE
+     C                     Z-ADD2         C
+     C                     ENDIF
+     C                     Z-ADDYEAR      Y
+     C                     Z-ADDMONTH     M
+     C                     Z-ADDDAY       D
+     C***                  MOVE 'IDF'     IDRCOD           Record ID Code
+     C***                  MOVE OTCDAT    IDATDT           Last update date
+     C***                  MOVELTIMSTP    IDATTM           Last update time
+     C                     MOVE *BLANKS   PTZIPP           Don't save zip.
+     C***                  MOVELPOSTO     IDDTAR           Last selections
+     C*
+     C           *IN80     IFEQ *OFF                       Record exists
+     C                     UPDATOAS102PR               83  ERR
+     C                     ELSE                            New record
+     C***                  Z-ADDIDATDT    IDCRDT           Create Date
+     C***                  Z-ADDIDATTM    IDCRTM           Create Time
+     C                     WRITEOAS102PR               82  ERR
+     C                     ENDIF                           End If IN80 Off
+     C*
+     C                     ENDSR                           UPDOAS

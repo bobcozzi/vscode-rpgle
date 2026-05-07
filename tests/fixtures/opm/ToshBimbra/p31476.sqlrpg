@@ -1,0 +1,26 @@
+     H*Type: Program
+     H*Program Name: Larry1
+     H*Title: Call a stored procedure
+     H*
+     H*Called By: Menu or Command Line
+     H*Bound Calls: None
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     H*
+     I*
+     IANNE        DS
+     I                                        1   72AMOUNT
+     I                                        8   9 STATE
+     I                                       10  162TAXAMT
+     C* * * * * * * * * * *   Calculations    * * *
+     C*
+     C* Set up selection criteria:
+     C                     MOVE 'LA'      STATE
+     C                     Z-ADD500       AMOUNT
+     C*
+     C* Call stored procedure:
+     C/EXEC SQL
+     C+ CALL LARRY (500, 'MN', :TAXAMT)
+     C/END-EXEC
+     C*
+     C                     MOVE *ON       *INLR

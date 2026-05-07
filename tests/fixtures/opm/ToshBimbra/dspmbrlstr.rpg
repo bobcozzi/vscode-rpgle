@@ -1,0 +1,60 @@
+      *%METADATA                                                       *
+      * %TEXT Display Member List for a File                           *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: DSPMBRLSTR
+     H*Title: Display Member List for a File
+     H*Input: QTEMP/QAFDMBRL
+     H*Output: Printed report
+     H*Called by: DSPMBRLST CL program (CPP for DSPMBRLST command)
+     H*External Calls: None
+     H*Compilation Notes/Parameters: FILE = File Name
+     H*                              TEXT = File Description
+     F*********************** File Specifications **************************
+     FQAFDMBRLIP  E                    DISK
+     FDSPMBRLSO   F      80     OF     PRINTER
+     C*********************** Calculations **********************************
+     C*           -----    -----
+     C           *INZSR    BEGSR
+     C* Initial Subroutine; executed automatically when program starts:
+     C*
+     C* Parm list for this program:
+     C           *ENTRY    PLIST
+@1A  C                     PARM           LIB    10
+     C                     PARM           FILE   10
+     C                     PARM           TEXT   50
+     C*
+@1A  C* Get current time for 1P Header:
+@1A  C                     TIME           TIME    60
+     C*
+     C* Build qualified Library/File name:
+@1A  C           LIB       CAT  '/':0     LIBFIL 21 P
+@1A  C           LIBFIL    CAT  FILE:0    LIBFIL
+     C*
+     C                     ENDSR                           End *INZSR
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     O*********************** Output Specifications ************************
+     ODSPMBRLSH  103   1P
+     O       OR        OF
+     O                                   10 'DSPMBRLSTR'
+     O                                   29 'Member List for'
+     O                                   34 'file'
+@1C  O                         LIBFIL    56
+     O                                   61 'Date'
+     O                         UDATE Y   70
+     O                                   75 'Page'
+     O                         PAGE  Z   80
+     O        H  2     1P
+     O       OR        OF
+     O                         TEXT      64
+@1A  O                         TIME      70 '  :  :  '
+     O        H  2     1P
+     O       OR        OF
+     O                                    4 'Name'
+     O                                   15 'Type'
+     O                                   33 'Description'
+     O        D  1    N1P
+     O                         MLNAME    10
+     O                         MLSEU2    21
+     O                         MLMTXT    72

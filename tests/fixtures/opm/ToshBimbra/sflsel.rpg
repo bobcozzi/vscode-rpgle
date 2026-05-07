@@ -1,0 +1,214 @@
+      *%METADATA                                                       *
+      * %TEXT Subfile: Display & Select                                *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: SFLSEL
+     H*Purpose: Example of a subfile selection program.
+     H*Note: Shows control record with message if no records in subfile.
+     H*Function:
+     H*Notes:
+     H*Called by: Menu or Command Line
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*  Indicator Usage Summary:
+     H*  --------- ----- -------
+     H* 01-24 = F1-F24
+     H* 52 Error found
+     H* 70 Display Subfile (SFLDSP)
+     H* 71 Clear Subfile (SFLCLR)
+     H* 73 Subfile Next Change (SFLNXTCHG) causes an error to keep appearing
+     H*    on the READC operation until the user corrects it.
+     H* 81 Invalid Option # selected (RI/PC on SFL record)
+     H* 82 More than one Option # selected (RI/PC on SFL record)
+     H* 91 Invalid Option # selected (SFLMSGID on SFLCTL record)
+     H* 92 More than one Option # selected (SFLMSGID on SFLCTL record)
+     H* 93 No subfile records to display (dummy field on F-Key trailer)
+     H*    ERRMSGID does not work because screen must already be
+     H* displayed before it is used, so MSGID used instead.
+     H* 99 Stop writing subfile: either EOF on input file, or subfile full.
+     H*
+     H*  Display Screens:
+     H*  ------- -------
+     H* 10 = Subfile Data Records (SFL) and input options.
+     H* 20 = Subfile Control Record (SFLCTL) Title, Column Headings, Options
+     H* 30 = Trailer Record. Lists all valid command keys.
+     H*
+     F* * * * * * * * * * *   File Specifications   * * * * * * * * * * * *
+     FSFLSEL  CF  E                    WORKSTN      KINFDS WSDS
+     F                                        RRN   KSFILE SFLSEL10
+     FNAMEFILEIF  E           K        DISK
+     F*
+     I* * * * * * * * * * *   Input Specifications  * * * * * * * * * * * *
+     I*
+     IWSDS        DS
+     I*               Identifies the key pressed
+     I                                      369 369 FKEY
+     I*
+     I* Program Status Data Structure:
+     I           SDS
+     I                                     *PROGRAM PGM
+     I*
+     I* LDA:
+     I           UDS
+     I                                        1  25 OUTDTA
+     I*
+     C* * * * * * * * * * *   Calculations   * * * * * * * * * * * * * * * **
+     C*
+     C                     EXSR CLRSF                      Clear Subfile
+     C                     EXSR BLDSF                      Build Subfile
+     C*
+     C           @ERROR    DOUEQ*OFF                       Off -> no errors
+     C                     EXSR DSPSF                      Display Subfile
+     C                     EXSR CMDKEY                     Process Cmd Keys
+     C                     MOVE *OFF      @ERROR           Errors?
+     C           RRN       IFGT *ZERO                      Any recs in SF?
+     C                     EXSR PRCSF                      Process Selection
+     C                     ENDIF                           End RRN > 0
+     C                     ENDDO                           End DOWH @ERR=off
+     C*
+     C* Set on LR here to cause pgm to end if user presses ENTER with no
+     C*  selection, otherwise program will execute until F3 pressed.
+     C                     MOVE *ON       *INLR
+     C*
+     C* * * * * * * * * * *   Subroutines  * * * * * * * * * * * * * * * * **
+     C*                    -----
+     C           *INZSR    BEGSR
+     C*
+      * Relative record # of 1st subfile record with an error:
+     C                     Z-ADD1         ERREC#           SFL Rec# to dsply
+     C*
+     C                     MOVE *OFF      @ERROR  1        User input error?
+     C*
+     C                     ENDSR                           END *INZSR
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           CLRSF     BEGSR
+     C* Clear subfile:
+     C                     MOVE *OFF      *IN70            SFLDSP
+     C                     MOVE *ON       *IN71            SFLCLR
+     C                     WRITESFLSEL20                   SFLCTL
+     C                     MOVE *OFF      *IN71            SFLCLR
+     C                     Z-ADD*ZERO     RRN     40
+     C                     ENDSR                           CLRSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           BLDSF     BEGSR
+     C* Build (Load) subfile:
+     C* Priming read to see if there are any records to display:
+     C           *LOVAL    SETLLNAMEFILE
+     C                     READ NAMEFILE                 99 EOF
+     C*
+     C                     Z-ADD*ZERO     @SOPT            Initialize Option
+     C*
+     C           *IN99     DOWEQ*OFF                       DOW IN99 OFF
+     C* Process record just read: move fields, increment RRN, write SFL rec.
+     C*
+     C                     ADD  1         RRN              Relative Record #
+     C                     WRITESFLSEL10               99  Write Subfile Rec
+     C*
+     C                     READ NAMEFILE                 99 EOF
+     C*
+     C           RRN       IFEQ 9999
+     C                     MOVE *ON       *IN99            Subfile full
+     C                     ENDIF
+     C*
+     C                     ENDDO                           END DOW IN99 OFF
+     C*
+     C                     ENDSR                           BLDSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           DSPSF     BEGSR
+     C* Display subfile if it has data, else show error message:
+     C*
+     C           RRN       IFGT *ZERO                      Data in SF?
+     C           @ERROR    IFEQ *OFF                        If no errors
+     C                     Z-ADD1         RRN                Show first record
+     C                     ENDIF                            End @ERR=Off
+     C                     MOVE *ON       *IN70             SFLDSP = On
+     C                     MOVE *OFF      *IN93             No error message
+     C                     ELSE                            Else
+     C                     MOVE *OFF      *IN70             SFLDSP =Off
+     C                     MOVE *ON       *IN93             MSGID for NRF
+     C                     ENDIF                           End RRN > 0
+     C*
+     C                     WRITESFLSEL30                   Valid Cmd Keys
+     C                     EXFMTSFLSEL20                   SFLCTL Record
+     C*
+     C                     ENDSR                           DSPSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           CMDKEY    BEGSR
+     C* Process any Command Keys Pressed:
+     C*
+     C           *IN03     IFEQ *ON                        F3  = EXIT
+     C           *IN12     OREQ *ON                        F12 = CANCEL
+     C                     MOVE *ON       *INLR            EOJ
+     C                     RETRN
+     C                     ENDIF
+     C*
+     C           *IN05     IFEQ *ON                        F5  = REFRESH
+     C                     ENDIF
+     C*
+     C                     ENDSR                           CMDKEY
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           PRCSF     BEGSR
+     C*
+     C                     MOVE *OFF      *IN81            Init
+     C                     MOVE *OFF      *IN82            Init
+     C                     MOVE *OFF      *IN91            Init
+     C                     MOVE *OFF      *IN92            Init
+     C*
+     C* Initialize counter for number of subfile records selected:
+     C                     Z-ADD*ZERO     #SEL    20       # of Selections
+     C*
+     C* Read changed records in subfile to check for selection(s):
+     C                     READCSFLSEL10                 98Read Changed Recs
+     C* Flag all changed records so they will be re-read next time:
+     C                     MOVE *ON       *IN73            SFLNXTCHG
+     C*
+     C           *IN98     DOWEQ*OFF                       DoW IN98 = Off
+     C*
+     C* If user made selection, initialize output variable with selection:
+     C                     SELEC
+     C*                    -----
+     C           @SOPT     WHEQ 0                          Usr blanked selec
+     C*
+     C           @SOPT     WHEQ 1                          1 = Select
+     C                     ADD  1         #SEL             # of "1"s picked
+     C           #SEL      IFGT 1                          IF #SEL > 1
+     C                     MOVE *ON       *IN82            RI/PC for sfl rec
+     C                     MOVE *ON       *IN92            MSG: Max 1 select
+     C           @ERROR    IFEQ *OFF                       First Error?
+     C                     Z-ADDRRN       ERREC#           RRN of 1st Error
+     C                     ENDIF                           End @ERROR = OFF
+     C                     MOVE *ON       @ERROR           A record has errs
+     C                     ELSE                            ELSE #SEL = 1
+     C                     MOVELNAMEF     OUTDTA
+     C                     ENDIF                           End #SEL > 1
+     C*
+     C                     OTHER                           ERROR
+     C                     MOVE *ON       *IN81            RI/PC for sfl rec
+     C                     MOVE *ON       *IN91            ERRMSGID USR0003
+     C           @ERROR    IFEQ *OFF                       First Error?
+     C                     Z-ADDRRN       ERREC#           RRN of 1st Error
+     C                     ENDIF                           END @ERROR = OFF
+     C                     MOVE *ON       @ERROR           A record has errs
+     C                     ENDSL                           End SELECT
+     C*                    -----
+     C*
+     C                     UPDATSFLSEL10                   Update SFL record
+     C                     MOVE *OFF      *IN81            Field error indic
+     C                     MOVE *OFF      *IN82            Field error indic
+     C                     READCSFLSEL10                 98
+     C                     ENDDO                           End DoW 98 = Off
+     C*
+     C                     ENDSR                           PRCSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

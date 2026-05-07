@@ -1,0 +1,43 @@
+      *%METADATA                                                       *
+      * %TEXT Ways to get date & time in RPG/400 *added error *        *
+      *%EMETADATA                                                      *
+     H*
+     H** DELIBERATELY ADDED ERROR TO TEST PMR 05103
+     H*
+     H*Program Name: DATETIME
+     H*Purpose: Show use of the TIME OpCode
+     H*Function: Using TIME OpCode with different size result fields:
+     H*  6 byte: gives time only (HHMMSS)
+     H* 12 byte: gives time + 6-digit MMDDYY date
+     H* 14 byte: gives time + 8-digit MMDDCCYY date
+     H*Called by: Command Line
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     H*
+     H* Indicator Usage Summary:
+     H* --------- ----- -------
+     H*
+     I* * * * * * * * * * *   Input Specifications  * * * * * * * * * * * *
+     I*
+     I           UDS
+     I                                        1   40THISYR
+     I                                       11  220REG
+     I                                       11  160TIME
+     I                                       17  220DATE
+     I*
+     I                                       31  440BIG
+     I                                       31  360TIME2
+     I                                       37  440DATE2
+     I*
+     C* * * * * * * * * * *   Calculations   * * * * * * * * * * * * * * * **
+     C*
+     C* *YEAR gives 4-digit year (UYEAR is 2-digit year)
+     C                     Z-ADD*YEAR     THISYR
+     C*
+     C                     TIME           REG              12 byte result
+     C* S/B 'BIG':
+     C                     TIME           BOG              14 byte result
+     C*
+     C                     MOVE *ON       *INLR
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

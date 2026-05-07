@@ -1,0 +1,17 @@
+      *%METADATA                                                       *
+      * %TEXT Finding the length of a character string                 *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: WebSvcTest
+     H*Purpose: Using CHEKR to find the length of a character string
+     H*Called by: Web Service
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     C* * * * * * * * * * *   Calculations   * * * * * * * * * * * * * * * * *
+     C           *ENTRY    PLIST
+     C                     PARM           STRING 10
+     C                     PARM           LENGTH  40
+     C* Mainline:
+     C           ' '       CHEKRSTRING    LENGTH           LEN=string length
+     C*
+     C                     MOVE *ON       *INLR

@@ -1,0 +1,337 @@
+      *%METADATA                                                       *
+      * %TEXT Subfile: Maintenance for lines of PTR Text               *
+      *%EMETADATA                                                      *
+      *NOTE: 07DEC95 ATTEMPTED TO UPDATE PGM BUT NOW ERROR HANDLING
+      *DOES NOT WORK IN THE SUBFILE.
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: SFLMNTP
+     H* FOR MAINTAINING THE (UP TO) 999 LINES OF TEXT ON A PTR.
+     H*Purpose: Example of using a Subfile for file maintenance.
+     H*Function: 1. Entering data in a blank field adds it to the file.
+     H*          2. Typing over existing data changes it in the file.
+     H*          3. Blanking out all fields in a record deletes it.
+     H*Notes: Copy of the key field is maintained in a hidden subfile field.
+     H*Called by: Command line
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*  Indicator Usage Summary:
+     H*  --------- ----- -------
+     H* 01-24 = F1-F24
+     H* 30 Key field zero (USR6011)
+     H* 35 Duplicate key on Add (USR0035)
+     H* 36 NRF on Chg/Inq/Del (USR0036)
+     H* 52 One or more fields is in error
+     H* 70 Display Subfile (SFLDSP)
+     H* 72 Initialize Subfile (SFLINZ)
+     H* 73 Subfile Next Change (SFLNXTCHG) causes an error to keep appearing
+     H*    on the READC operation until the user corrects it.
+     H* 81 Invalid Option # selected (RI/PC on SFL record)
+     H* 82 More than one Option # selected (RI/PC on SFL record)
+     H* 91 Invalid Option # selected (SFLMSGID on SFLCTL record)
+     H* 92 More than one Option # selected (SFLMSGID on SFLCTL record)
+     H* 99 Stop writing subfile: either EOF on input file, or subfile full.
+     H*
+     H*  Display Screens:
+     H*  ------- -------
+     H* 10 = Get Action Code and key field.
+     H* 20 = Subfile Data Records (SFL) and input options.
+     H* 30 = Subfile Control Record (SFLCTL) Title, Column Headings, Options
+     H* 40 = Trailer Record. Lists all valid command keys.
+     F* * * * * * * * * * *   File Specifications   * * * * * * * * * * * *
+     F*
+     FSFLMNTP CF  E                    WORKSTN      KINFDS DEVDS1
+     F                                        RRN   KSFILE SFLMNT20
+     FTXTFILE UF  E           K        DISK                      A
+     F*
+     I* * * * * * * * * * *   Input Specifications  * * * * * * * * * * * *
+     I*
+     IDEVDS1      DS
+     I*               Identifies the key pressed
+     I                                      369 369 FKEY
+     I*
+     I* Program Status Data Structure:
+     I           SDS
+     I                                     *PROGRAM PGM
+     I*
+     C* * * * * * * * * * *   Calculations   * * * * * * * * * * * * * * * *
+     C*
+     C* Display Format, loop until exit requested (DOU always executes once)
+     C           *IN52     DOUEQ*OFF                       No Errors      **
+     C           *IN03     OREQ *ON                         or Exit       **
+     C*
+     C                     EXFMTSFLMNT10
+     C                     MOVE *OFF      *IN52            Error Indicator *
+     C*
+     C           TXKEY     IFEQ *ZERO
+     C                     MOVE *ON       *IN30
+     C                     MOVE *ON       *IN52            ERROR INDICATOR
+     C                     ENDIF
+     C*
+     C                     Z-ADD*LOVAL    TXLNNO
+     C           TXKLST    SETLLTXTFILE              99    NRF
+     C*
+     C                     SELEC                           Select @SFUNC
+     C*                    -----
+     C           @SFUNC    WHEQ 'A'                        Add
+     C                     MOVE *OFF      *IN16            UNPROTECT DATA
+     C           *IN99     IFEQ *OFF
+     C                     MOVE *ON       *IN35            ERR: Key exists
+     C                     MOVE *ON       *IN52            ERROR INDICATOR
+     C                     ENDIF
+     C*
+     C           @SFUNC    WHEQ 'C'                        Change
+     C                     MOVE *OFF      *IN16            UNPROTECT DATA
+     C           *IN99     IFEQ *ON
+     C                     MOVE *ON       *IN36            ERR: not found
+     C                     MOVE *ON       *IN52            ERROR INDICATOR
+     C                     ENDIF
+     C*
+     C           @SFUNC    WHEQ 'I'                        Inquire
+     C                     UNLCKTXTFILE                    Release - Inquiry
+     C                     MOVE *ON       *IN16            PROTECT DATA
+     C           *IN99     IFEQ *ON
+     C                     MOVE *ON       *IN36            ERR: not found
+     C                     MOVE *ON       *IN52            ERROR INDICATOR
+     C                     ENDIF
+     C*
+     C           @SFUNC    WHEQ 'D'                        Delete
+     C           *IN99     IFEQ *ON
+     C                     MOVE *ON       *IN36            ERR: not found
+     C                     MOVE *ON       *IN52            ERROR INDICATOR
+     C                     ENDIF
+     C*
+     C                     MOVE *ON       *IN16            PROTECT DATA
+     C           *IN99     DOWEQ*OFF
+     C           TXKEY     READETXTFILE                  99 = No Match Found
+     C  N99                DELETTXTREC
+     C                     ENDDO                           DOW *IN99 = OFF
+     C*
+     C                     OTHER                           Otherwise, error
+     C                     MOVE *ON       *IN91            BAD ACTION CODE
+     C                     MOVE *ON       *IN52            ERROR INDICATOR
+     C*
+     C                     ENDSL                           End Select @SFUNC
+     C*                    -----
+     C                     ENDDO                           End Do Until   **
+     C*
+     C           *IN03     IFEQ *ON                        Exit
+     C                     MOVE *ON       *INLR
+     C                     RETRN
+     C                     ENDIF
+     C*
+     C* Show details in subfile:
+     C                     EXSR INZSF                      Initialize Subfile
+     C                     EXSR BLDSF                      Build Subfile
+     C*
+     C           @ERROR    DOUEQ*OFF                       Off -> no errors
+     C                     EXSR DSPSF                      Display Subfile
+     C                     EXSR CMDKEY                     Process Cmd Keys
+     C                     MOVE *OFF      @ERROR           Errors?
+     C*
+     C           @SFUNC    IFEQ 'A'
+     C           @SFUNC    OREQ 'C'
+     C                     EXSR PRCSF                      Process Selection
+     C                     ENDIF
+     C*
+     C                     ENDDO                           End DOWH 73 = off
+     C*
+     C* * * * * * * * * * *   Subroutines  * * * * * * * * * * * * * * * * *
+     C*           -----    -----
+     C           *INZSR    BEGSR
+     C* Initial Subroutine; executed automatically when program starts:
+     C*
+     C                     Z-ADD1         ERREC#           SFL Rec# to dsply
+     C*
+     C                     MOVE *OFF      @ERROR  1        User input error?
+     C*
+     C* Key list for TXTFILE file:
+     C           TXKLST    KLIST
+     C                     KFLD           TXKEY
+     C                     KFLD           TXLNNO
+     C*
+     C* Initialize default values for prompt screen:
+     C                     MOVE 'I'       @SFUNC
+     C*
+     C                     ENDSR                           END *INZSR
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           INZSF     BEGSR
+     C* Initialize subfile:
+     C                     MOVE *OFF      *IN70            SFLDSP
+     C                     MOVE *ON       *IN72            SFLINZ
+     C                     Z-ADD1         RRN     40       Relative Record #
+     C                     WRITESFLMNT30                   SFLCTL Record
+     C                     MOVE *OFF      *IN72            SFLINZ
+     C                     ENDSR                           INZSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           BLDSF     BEGSR
+     C* Build (Load) subfile:
+     C* Priming read to see if there are any records to display:
+     C           TXKEY     SETLLTXTFILE
+     C           TXKEY     READETXTFILE                  99 = No Match Found
+     C*
+     C           *IN99     DOWEQ*OFF
+     C* Process record just read; move fields, write SFL rec & update RRN
+     C*
+     C                     MOVE TXTEXT    SFTEXT
+     C                     MOVE TXLNNO    SFLNNO
+     C                     MOVE TXLNNO    OLDKEY           Key: hidden copy
+     C                     WRITESFLMNT20                   Write Subfile Rec
+     C                     ADD  1         RRN              Relative Record #
+     C*
+     C           RRN       IFEQ 9999
+     C                     MOVE *ON       *IN99            Subfile full
+     C                     ENDIF
+     C*
+     C           TXKEY     READETXTFILE                  99 = No Match Found
+     C                     ENDDO                           END DOW IN99 OFF
+     C*
+     C                     ENDSR                           BLDSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           DSPSF     BEGSR
+     C*
+     C* Display subfile:
+     C           RRN       IFGT *ZERO
+     C                     MOVE *ON       *IN70            SFLDSP = YES
+     C                     ELSE
+     C                     MOVE *OFF      *IN70            SFLDSP = NO
+     C                     ENDIF
+     C                     WRITESFLMNT40                   Valid Cmd Keys
+     C*
+     C           @ERROR    IFEQ *OFF                       No errors?
+     C                     Z-ADD1         RRN              Show first record
+     C                     ENDIF
+     C*
+     C                     EXFMTSFLMNT30                   SFLCTL
+     C                     ENDSR                           DSPSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           CMDKEY    BEGSR
+     C* Process any Command Keys Pressed:
+     C*
+     C           *IN03     IFEQ *ON                        F3  = EXIT
+     C**         *IN12     OREQ *ON                        F12 = CANCEL
+     C                     MOVE *ON       *INLR            EOJ
+     C                     RETRN
+     C                     ENDIF
+     C*
+     C                     ENDSR                           CMDKEY
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           PRCSF     BEGSR
+     C* Read changed records in subfile to check for selection:
+     C*
+     C                     MOVE *OFF      *IN81            Init
+     C                     MOVE *OFF      *IN82            Init
+     C                     MOVE *OFF      *IN83            Init
+     C                     MOVE *OFF      *IN84            Init
+     C                     MOVE *OFF      *IN91            Init
+     C                     MOVE *OFF      *IN92            Init
+     C                     MOVE *OFF      *IN93            Init
+     C                     MOVE *OFF      *IN94            Init
+     C*
+     C                     READCSFLMNT20                 98EOF
+     C* Flag all changed records so they will be re-read next time:
+     C                     MOVE *ON       *IN73            SFLNXTCHG
+     C*
+     C           *IN98     DOWEQ*OFF
+     C*
+     C* Update data base file & subfile to reflect user changes from screen:
+     C                     SELEC
+     C*                    -----
+     C*
+     C* DELETE: (Hidden key field is not blank, but all data fields are.)
+     C           OLDKEY    WHNE *ZERO                      Hidden Key Field
+     C           SFLNNO    ANDEQ*ZERO                      Screen data field
+     C           SFTEXT    ANDEQ*BLANK                     Screen data field
+     C                     Z-ADDOLDKEY    TXLNNO            Get old record
+     C           TXKLST    CHAINTXTFILE              99     NRF
+     C           *IN99     IFEQ *OFF                        Found old rec
+     C                     DELETTXTREC                      Delete old rec
+     C                     ELSE                                        Indic
+     C                     MOVE *ON       *IN81            RI/PC
+     C                     MOVE *ON       *IN91            SFLMSGID USR0037
+     C           @ERROR    IFEQ *OFF                       First Error?
+     C                     Z-ADDRRN       ERREC#           RRN of 1st Error
+     C                     ENDIF                           End @ERROR = OFF
+     C                     MOVE *ON       @ERROR           A record has errs
+     C                     ENDIF                           END IN99 IFEQ OFF
+     C*
+     C*
+     C* ADD: (Hidden key field blank => record was not loaded into file.)
+     C           OLDKEY    WHEQ *ZERO                      OLD KEY = 0
+     C                     Z-ADDSFLNNO    TXLNNO           Key from screen
+     C           TXKLST    CHAINTXTFILE              99    NRF in file
+     C           *IN99     IFEQ *OFF                       IF *IN99 = OFF
+     C                     MOVE *ON       *IN82            RI/PC
+     C                     MOVE *ON       *IN92            SFLMSGID USR0035
+     C           @ERROR    IFEQ *OFF                       First Error?
+     C                     Z-ADDRRN       ERREC#           RRN of 1st Error
+     C                     ENDIF                           End @ERROR = OFF
+     C                     MOVE *ON       @ERROR           A record has errs
+     C                     ENDIF                           END *IN99 = OFF
+     C*
+     C                     EXSR VALID                      Validate user dta
+     C           *IN52     IFEQ *OFF                       IF *IN52 = OFF
+     C                     Z-ADDSFLNNO    OLDKEY           ]Hidden Key
+     C                     MOVE SFLNNO    TXLNNO           ]Screen to file
+     C                     MOVE SFTEXT    TXTEXT           ]Screen to file
+     C                     WRITETXTREC                     ]Add record
+     C                     ENDIF                           END *IN52 = OFF
+     C*
+     C*
+     C* CHANGE: (All other cases.)
+     C                     OTHER                           Otherwise
+     C                     MOVE SFLNNO    TXLNNO            Key from screen
+     C           TXKLST    CHAINTXTFILE              99     NRF
+     C           *IN99     IFEQ *ON                         IF *IN99 = ON
+     C                     MOVE *ON       *IN83            RI/PC
+     C                     MOVE *ON       *IN93            SFLMSGID USR0036
+     C           @ERROR    IFEQ *OFF                       First Error?
+     C                     Z-ADDRRN       ERREC#           RRN of 1st Error
+     C                     ENDIF                           End @ERROR = OFF
+     C                     MOVE *ON       @ERROR           A record has errs
+     C                     ENDIF                            END *IN99 = OFF
+     C*
+     C                     EXSR VALID                      Validate user dta
+     C           *IN52     IFEQ *OFF                       No errors
+     C                     Z-ADDSFLNNO    TXLNNO           ]Screen to file
+     C                     MOVE SFTEXT    TXTEXT           ]Screen to file
+     C                     UPDATTXTREC                     ]Update file
+     C                     ENDIF                           END *IN52 = OFF
+     C*
+     C                     ENDSL                           END Select
+     C*
+     C                     UPDATSFLMNT20                   Update subfile
+     C*
+     C                     READCSFLMNT20                 98Next changed rec
+     C                     ENDDO                           END DOW 98 = OFF
+     C*
+     C                     ENDSR                           PRCSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           VALID     BEGSR
+     C* Validate fields entered/changed by user:
+     C*
+     C*  Since SFLMSGID is specified on the control record, not the data
+     C* record, error indicators cannot be set off through DDS.
+     C*  When using subfiles, error indicators must be explicitly set off:
+     C*
+     C           SFLNNO    IFEQ *ZERO                      IF SKEY = 0
+     C                     MOVE *ON       *IN84            ]ERRMSGID USR0032
+     C                     MOVE *ON       *IN94            ]Field in error
+     C                     MOVE *ON       *IN52            ]Field in error
+     C                     ENDIF                           END SKEY = 0
+     C*
+     C                     ENDSR                           END VALID
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

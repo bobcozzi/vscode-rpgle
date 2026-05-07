@@ -1,0 +1,117 @@
+      *%METADATA                                                       *
+      * %TEXT Print list of programs using a given file                *
+      *%EMETADATA                                                      *
+     H* FINDPGMR                         16JAN91                  
+     H*
+     H* Prints a list of programs which use a specified
+     H* file.  This list can be used to change or recompile programs
+     H* affected when a database file is changed.
+     H*
+     H* INPUT: Open Query File containing programs which use a given
+     H* file, keyed by library and program name, produced by DSPPGMREF.
+     H*
+     H* OUTPUT: Formatted list with level break at library name.
+     H*
+     H*WHFUSG     S      2  0 1=I,2=O,3=I/O,4=U,5=I/U,6=O/U,7=I/O/U,8=N/S,0=N/A
+     F*********************** File Specifications **************************
+     FQADSPPGMIP  E                    DISK
+     F* Record Format Name = QWHDRPPR, Field Prefix = WH
+     FFINDPGM O   F      80     OF     PRINTER
+     F*
+     I*********************** Input Specifications *************************
+     I* Input Specifications - override to provide Level break on library.
+     IQWHDRPPR
+     I                                              WHLIB L1
+     I* Local Data Area (*LDA) contains file name for 1P Header:
+     I           UDS
+     I                                        1  10 FILE
+@1A  I                                       11  20 LIB
+     I*
+     C*********************** Calculations *********************************
+     C* The DSPPGMREF command generates one output record for each
+     C* occurence of the file name in the program, so filter out the
+     C* duplicates to improve readability:
+     C           WHPNAM    IFNE OLDNAM                     If name changed
+     C           WHLIB     ORNE OLDLIB                      or lib changed
+     C                     MOVE WHPNAM    OLDNAM 10        save new name
+     C                     MOVE WHLIB     OLDLIB 10        and new library
+@1A  C                     SELEC
+@1A  C           WHFUSG    WHEQ 1                          Usage
+@1A  C                     MOVEL'I'       USE     3 P
+@1A  C           WHFUSG    WHEQ 2
+@1A  C                     MOVEL'O'       USE       P
+@1A  C           WHFUSG    WHEQ 3
+@1A  C                     MOVE 'I/O'     USE
+@1A  C           WHFUSG    WHEQ 4
+@1A  C                     MOVEL'U'       USE       P
+@1A  C           WHFUSG    WHEQ 5
+@1A  C                     MOVE 'I/U'     USE
+@1A  C           WHFUSG    WHEQ 6
+@1A  C                     MOVE 'O/U'     USE
+@1A  C           WHFUSG    WHEQ 7
+@1A  C                     MOVE 'All'     USE
+@1A  C           WHFUSG    WHEQ 8
+@1A  C                     MOVE 'n/a'     USE
+@1A  C                     OTHER
+@1A  C                     MOVE *BLANKS   USE
+@1A  C                     ENDSL
+     C*
+     C                     EXCPTOUTREC                     and print old.
+@1A  C                     ADD  1         COUNT   50       # Programs
+     C                     END
+     C*
+@1A  CLR         COUNT     IFEQ *ZERO
+@1A  CLR                   EXCPTNODATA
+@1A  CLR                   ELSE
+@1A  CLR                   EXCPTTOTAL
+@1A  CLR                   ENDIF
+     C*
+     C* * * * * * * * * *  Subroutines  * * * * * * * * * * * * * * * * * * * *
+     C*           -----    -----
+@1A  C           *INZSR    BEGSR
+     C*
+     C* Get current time for 1P Header:
+     C                     TIME           TIME    60
+     C*
+     C                     ENDSR                           End *INZSR
+     C*                    -----
+     O*********************** Output Specifications ************************
+     OFINDPGM H  2 3   1P
+     O       OR        OF
+     O                                    7 'FINDPGM'
+     O                                   39 'Programs using file'
+     O                         FILE      50
+     O                         UDATE Y   65
+     O                                   75 'Page:'
+     O                         PAGE  Z   80
+     O        H  2     1P
+     O       OR        OF
+     O                                    7 'Library'
+     O                                   19 'Pgm Name'
+@1A  O                                   25 'Use'
+@1C  O                                   38 'Description'
+@1A  O                         TIME      65 '  :  :  '
+     O        E  1             OUTREC
+     O                 L1      WHLIB  B  10
+     O                 OFNL1   WHLIB  B  10
+     O                         WHPNAM    21
+@1A  O                         USE       25
+     O                         WHTEXT    77
+     O*
+@1A  O        E 11             TOTAL
+@1A  O                         COUNT Z    6
+@1A  O                                   24 'Programs use file'
+@1A  O                         FILE      35
+     O*
+@1A  O        E 11             TOTAL
+     O                                   25 'Usage: I = Input, O = Ou'
+     O                                   49 'tput, U = Update, All = '
+     O                                   71 'Input, Output & Update'
+@1A  O        E  1             TOTAL
+     O                                   28 'n/a = usage info not'
+     O                                   39 'available.'
+@1A  O        E 11             NODATA
+@1A  O                                   24 '* No programs in library'
+@1A  O                         LIB       35
+@1A  O                                   44 'use file'
+@1A  O                         FILE      55

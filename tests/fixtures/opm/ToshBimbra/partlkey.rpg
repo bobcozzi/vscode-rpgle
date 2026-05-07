@@ -1,0 +1,51 @@
+      *%METADATA                                                       *
+      * %TEXT Reading a File Using a Partial Key                       *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: PARTLKEY
+     H*Purpose: Example of reading all the records in a file equal to one
+     H* or more parts of a composite key.
+     H*
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*
+     C* Example 1: Matching only one key field.
+     C* File INFILE has a composite key; field KEY1 is part of that key.
+     C* Note that no KLIST is required and "Read Equal" is the Op Code.
+     C           KEY1      SETLLINFILE                     Position File
+     C           KEY1      READEINFILE                   30 = No Match Found
+     C* Error logic for "no records match partial key" could go here. . .
+     C           *IN30     DOWEQ*OFF
+     C*
+     C* Processing steps for record just read. . .
+     C*
+     C           KEY1      READEINFILE                   30 = No Match Found
+     C                     ENDDO                           END DOW IN30 OFF
+     C*
+     C* Example 2: Matching more than one key field.
+     C*  When more than the first key field is needed, define a KLIST with
+     C* ONLY the key fields needed and READE with the key list.
+     C*
+     C*  If file INFILE has a 5-part compound key, KEY1 - 5,
+     C* to read the file based on the first three key fields only:
+     C           INPK3     KLIST
+     C                     KFLD           KEY1
+     C                     KFLD           KEY2
+     C                     KFLD           KEY3
+     C* INPK3: 'IN' = file field prefix, 'PK' = Partial Key, 3 = 1st 3 keys
+     C*
+     C           INPK3     SETLLINFILE                     Position File
+     C           INPK3     READEINFILE                   30 = No Match Found
+     C* Error logic for "no records match partial key" could go here. . .
+     C           *IN30     DOWEQ*OFF
+     C*
+     C* Processing steps for record just read. . .
+     C*
+     C           KEY1      READEINFILE                   30 = No Match Found
+     C                     ENDDO                           END DOW IN30 OFF
+     C*
+     C* NOTE: When the READE operation is not successful, i.e., the
+     C* the new record does not match the partial key, the EOF indicator
+     C* is set on and any subsequent READs will return EOF even though the
+     C* last record read may have been in the middle of the file. You
+     C* must reposition the file cursor with a CHAIN or SETLL before
+     C* issuing a READ after a READE.

@@ -1,0 +1,43 @@
+      *%METADATA                                                       *
+      * %TEXT Processing a multi-format logical file                   *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*NAME: LFMULTI
+     H*Purpose: Process a multi-format (Header+Detail) Logical File
+     H*Input:
+     H*Output: Printed report
+     H*External Calls:
+     H*Compilation Notes/Parameters: None
+     F* * * * * * * * * * * * File Specifications * * * * * * * * * * ******
+     F*
+     FU5SETTL IP  E           K        DISK
+     FQPRINT  O   F     132     OF     PRINTER
+     F*
+     I* * * * * * * * * * * * Input Specifications  * * * * * * * * * ******
+     I*
+     IU5SHREC     05
+     I*
+     IU5SDREC     06
+     I*
+     I* Program Status Data Structure:    (Program Name)
+     I           SDS
+     I                                     *PROGRAM PGM
+     I*
+     O*********************** Output Specifications ************************
+     OQPRINT  H  203   1P
+     O       OR        OF
+     O                         PGM       10
+     O                                   63 'Settlement Records'
+     O                                   95 'DATE'
+     O                         UDATE Y  104
+     O**                       TIME     116 '  :  :  '
+     O                                  127 'Page'
+     O                         PAGE  Z  132
+     O        D  1
+     O                 05                 6 'Header'
+     O                 06                 6 'Detail'
+     O                         SECNO Z   14
+     O                         SECROP    17
+     O                         SEPCTPZ   20
+     O                         SECTNOZ   28
+     O                         SESEQ     32

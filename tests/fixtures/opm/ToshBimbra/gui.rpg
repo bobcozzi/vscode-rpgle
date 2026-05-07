@@ -1,0 +1,85 @@
+      *%METADATA                                                       *
+      * %TEXT GUI: Menu Bars, Radio Buttons & Check Boxes              *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Name: GUI
+     H*File Type: DSPF
+     H*Title: GUI Functions: Menu Bars, Radio Buttons & Check Boxes.
+     H*Notes:
+     H*Called by:
+     H*Compilation Notes/Parameters: None
+     F* * * * * * * * * * *   File Specifications   * * * * * * * * * * * *
+     F*
+     FGUI     CF  E                    WORKSTN      KINFDS DEVDS1
+     F*
+     I* * * * * * * * * * *   Input Specifications  * * * * * * * * * * * *
+     I*
+     I* Program Status Data Structure:
+     I           SDS
+     I                                     *PROGRAM PGM
+     I                                     *PARMS   #PARMS
+     I                                     *STATUS  STATUS
+     I*
+     I* Workstation File Information Data Structure (INFDS)
+     IDEVDS1      DS
+     I                                      369 369 KEY
+     I                                    B 370 3710CSRLOC
+     I*
+     I* FKey definitions:
+     I              X'3A'                 C         F10                   Menu
+     I*
+     C* * * * * * * * * *  Calculations  * * * * * * * * * * * * * * * * * * * *
+     C*
+     C                     EXFMTSCREEN01
+     C*
+     C***        KEY       IFEQ F10                        F10=MENU
+     C                     EXSR DSPMNU
+     C***                  ENDIF
+     C*
+     C           *IN03     DOWEQ*OFF
+     C*
+     C* PROCESSING. . .
+     C                     Z-ADD2         LOC
+     C                     EXFMTSCREEN01
+     C                     ENDDO                           DOW 03=OFF
+     C*
+     C                     MOVE *ON       *INLR
+     C                     RETRN
+     C*
+     C* * * * * * * * * *  Subroutines  * * * * * * * * * * * * * * * * * * * *
+     C*          ------    -----
+     C           DSPMNU    BEGSR
+     C*
+     C                     EXFMTMAINMENU                   READ MENU BAR
+     C           MNUFLD    IFEQ 1
+     C                     READ MAINT                    99
+     C           MNTSEL    CASEQ1         SUBR
+     C           MNTSEL    CASEQ2         SUBR
+     C                     ENDCS
+     C                     ENDIF
+     C*
+     C           MNUFLD    IFEQ 2
+     C                     READ PROCES                   99
+     C           PRCSEL    CASEQ1         SUBR
+     C           PRCSEL    CASEQ2         SUBR
+     C           PRCSEL    CASEQ3         SUBR
+     C           PRCSEL    CASEQ4         SUBR
+     C                     ENDCS
+     C                     ENDIF
+     C*
+     C           MNUFLD    IFEQ 3
+     C                     READ INQUIRE                  99
+     C           INQSEL    CASEQ1         SUBR
+     C           INQSEL    CASEQ2         SUBR
+     C           INQSEL    CASEQ3         SUBR
+     C                     ENDCS
+     C                     ENDIF
+     C*
+     C                     ENDSR                           END DSPMNU
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*          ----      -----
+     C           SUBR      BEGSR
+     C                     ENDSR
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

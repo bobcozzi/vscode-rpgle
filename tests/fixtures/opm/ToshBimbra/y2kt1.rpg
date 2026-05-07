@@ -1,0 +1,35 @@
+      *%METADATA                                                       *
+      * %TEXT Y2K Test: Print MMDDYY Dates                             *
+      *%EMETADATA                                                      *
+     H*Program Name: Y2KT1
+     H*Title: Sample report program for testing Y2K Lite conversion.
+     H*Input: Y2KF1: a PF with packed MMDDYY dates.
+     H*Output: Printed report
+     H*Called by: command line
+     F* * * * * * * * * * * * File Specifications * * * * * * * * * * ******
+     FY2KF1A  IP  E           K        DISK
+     FQPRINT  O   F     132     OF     PRINTER
+     C* * * * * * * * * * * * Subroutines * * * * * * * * * * * * * * *******
+     C           *INZSR    BEGSR
+     C*           -----    -----
+     C* Get current time for 1P Header:
+     C                     TIME           TIME    60
+     C                     ENDSR                           *INZSR
+     C*                    -----
+     O*********************** Output Specifications ************************
+     OQPRINT  H  203   1P
+     O       OR        OFN1P
+     O                                   10 'Y2KT1'
+     O                                   63 'Report'
+     O                                   95 'Date'
+     O                         UDATE Y  104
+     O                         TIME     116 '  :  :  '
+     O                                  127 'Page'
+     O                         PAGE  Z  132
+     O        H  3     1P
+     O       OR        OFN1P
+     O                                   10 'Start Date'
+     O                                   27 'Difference'
+     O        D  2    N1P
+     O                         STRDATY   10
+     O                         DIFF  K   27

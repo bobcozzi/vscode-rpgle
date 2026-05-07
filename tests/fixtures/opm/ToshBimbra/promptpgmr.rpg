@@ -1,0 +1,92 @@
+      *%METADATA                                                       *
+      * %TEXT Prompt program with screen-defined error messages        *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: PROMPTPGMR
+     H*Purpose: Process same prompt screen as a CL pgm
+     H*Function: Use the DDS ERRSFL and MSGID Keywords to standardize and
+     H* isolate message handling from the processing program.
+     H*Notes: Processing program only needs to set on indicators for errors;
+     H* DDS will display the messages, set off the indicators, etc.
+     H* Default values for fields, even referenced fields, can be
+     H*supplied either in the DDS or in the calling program, or
+     H*even a combination such as where one default value is the current
+     H*year, month, etc. but the rest are constants.
+     H*Input: N/A
+     H*Output: N/A
+     H*Called by: Command Line
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     F* * * * * * * * * * *   File Specifications   * * * * * * * * * * * *
+     FPROMPTSCCF  E                    WORKSTN
+     I* * * * * * * * * * *   Input Specifications  * * * * * * * * * * * *
+     I*
+     I            DS
+     I                                        1  120DSTIME
+     I                                       11  120@SBYR
+     C*********************** Calculations *********************************
+     C* Initialize default values for prompt screen:
+     C                     TIME           DSTIME
+     C                     Z-ADD1         @SBMON
+     C                     Z-ADD9999999   @SECNO
+     C*
+     C* Display Format; loop until valid input (DOU always executes once)
+     C           *IN99     DOUEQ*OFF                       No Errors      **
+     C           *IN03     OREQ *ON                         or Exit       **
+     C           *IN12     OREQ *ON                         or Cancel     **
+     C                     EXFMTPROMPTR                    Display Format  *
+     C*                                                                    *
+     C                     MOVE *OFF      *IN99            Error Indicator *
+     C*                                                                    *
+     C* Validate parameters keyed in by user:                              *
+     C*                                                                    *
+     C*          Month portion of date range:                              *
+     C           @SBMON    IFGT 12                                         *
+     C           @SBMON    ORLT 1                                          *
+     C                     MOVE *ON       *IN31            RI & PC         *
+     C                     MOVE *ON       *IN99            Error Indicator *
+     C                     END                             End month       *
+     C*                                                                    *
+     C           @SBMON    IFEQ 1                                          *
+     C                     MOVE *ON       *IN36            RI & PC         *
+     C                     MOVE *ON       *IN99            Error Indicator *
+     C                     END                             End month       *
+     C*                                                                    *
+     C           @SBMON    IFEQ 2                                          *
+     C                     MOVE *ON       *IN37            RI & PC         *
+     C                     MOVE *ON       *IN99            Error Indicator *
+     C                     END                             End month       *
+     C*                                                                    *
+     C           @SBMON    IFEQ 3                                          *
+     C                     MOVE *ON       *IN38            RI & PC         *
+     C                     MOVE *ON       *IN99            Error Indicator *
+     C                     END                             End month       *
+     C*                                                                    *
+     C*          Validate customer number range:                           *
+     C           @SBCNO    IFLE *ZERO                                      *
+     C                     MOVE *ON       *IN32            RI & PC         *
+     C                     MOVE *ON       *IN99            Error Indicator *
+     C                     ENDIF                           End begin cust# *
+     C           @SECNO    IFLE *ZERO                                      *
+     C                     MOVE *ON       *IN35            RI & PC         *
+     C                     MOVE *ON       *IN99            Error Indicator *
+     C                     ENDIF                           End ending cust#*
+     C           @SBCNO    IFGT @SECNO                                     *
+     C                     MOVE *ON       *IN33            RI & PC         *
+     C                     MOVEL@SBCNO    RPL33            Replacement Text*
+     C                     MOVE @SECNO    RPL33             for error msg. *
+     C                     MOVE *ON       *IN99            Error Indicator *
+     C                     ENDIF                           End customer #  *
+     C*                                                                    *
+     C*          Validate Yes/No selection:                                *
+     C           @SYN      IFNE 'Y'                                        *
+     C           @SYN      ANDNE'N'                                        *
+     C                     MOVE *ON       *IN34            RI & PC         *
+     C                     MOVE @SYN      RPL34            Replacement Text*
+     C                     MOVE *ON       *IN99            Error Indicator *
+     C                     ENDIF                           End validate Y/N*
+     C*                                                                    *
+     C                     ENDDO                           End Do Until   **
+     C*
+     C*
+     C                     SETON                       LR  EOJ

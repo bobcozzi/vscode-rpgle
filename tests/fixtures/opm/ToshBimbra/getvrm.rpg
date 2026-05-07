@@ -1,0 +1,29 @@
+      *%METADATA                                                       *
+      * %TEXT Get Version, Release & Mod Level of system               *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: GETVRM
+     H*Purpose: Get Version, Release & Mod Level of system
+     H*Called by: Command Line
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     H* Indicator Usage Summary:
+     H* --------- ----- -------
+     H* 99 Error reading data area.
+     H*
+     I* * * * * * * * * * *   Input Specifications  * * * * * * * * * * * *
+     I*
+     I            DS
+     I                                        1  29 VRM
+     I                                        1   8 LEVEL
+     I                                       26  29 LANGID
+     I*
+     C* * * * * * * * * * *   Calculations   * * * * * * * * * * * * * * * **
+     C*
+     C*                  Define ExtName = PgmName
+     C*                  ------ -------   ------
+     C           *NAMVAR   DEFN QSS1MRI   VRM
+     C                     IN   VRM                    99  ERR
+     C                     MOVE *ON       *INLR
+     C*
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

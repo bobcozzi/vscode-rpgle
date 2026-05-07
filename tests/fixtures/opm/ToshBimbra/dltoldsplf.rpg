@@ -1,0 +1,1293 @@
+      *%METADATA                                                       *
+      * %TEXT Delete Old Spooled File from KB Doc 13954227             *
+      *%EMETADATA                                                      *
+     H
+     H* ***************************************************************
+     H* ***************************************************************
+     H*                                                               *
+     H* MODULE:    DLTOLDSPLF                                         *
+     H* Delete Old Spooled File from KB Doc 13954227                  *
+     H*                                                               *
+     H* LANGUAGE:  RPG                                                *
+     H*                                                               *
+     H* FUNCTION:  THIS APPLICATION WILL DELETE OLD SPOOLED FILES     *
+     H*            FROM THE SYSTEM, BASED ON THE INPUT PARAMETERS.    *
+     H*                                                               *
+     H* APIs USED:                                                    *
+     H*            QUSCRTUS -- Create User Space                      *
+     H*            QUSLSPLF -- List Spooled Files                     *
+     H*            QUSRTVUS -- Retrieve User Space                    *
+     H*            QUSRSPLA -- Retrieve Spooled File Attributes       *
+     H*            QMHSNDPM -- Send Program Message                   *
+     H*            QUSDLTUS -- Delete User Space                      *
+     H*                                                               *
+     H* ***************************************************************
+     H* ***************************************************************
+     E/COPY QSYSINC/QRPGSRC,EUSRSPLA
+     I              'NUMBER OF SPOOLED -  C         MSGTXT
+     I              'FILES DELETED:  '
+     IMSGDTA      DS
+     I                                        1  35 MSGDT1
+     I                                       36  400DLTCNT
+     ISTRUCT      DS
+     I                                    B   1   40USSIZE
+     I                                    B   5   80GENLEN
+     I                                    B   9  120RTVLEN
+     I                                    B  13  160STRPOS
+     I                                    B  17  200RCVLEN
+     I                                    B  21  240SPLF#
+     I                                    B  25  280MSGDLN
+     I                                    B  29  320MSGQ#
+     I                                       33  38 FIL#
+     I                                       39  42 MSGKEY
+     I I            'DLTOLDSPLFQTEMP     '   43  62 USRSPC
+     I I            '*REQUESTER          '   63  82 MSGQ
+     ITGTDAT      DS
+     I                                        1   1 TGTCEN
+     I                                        2   3 TGTYR
+     I                                        4   5 TGTMTH
+     I                                        6   7 TGTDAY
+     I/COPY QSYSINC/QRPGSRC,QUSGEN
+     I/COPY QSYSINC/QRPGSRC,QUSLSPL
+     I*COPY QSYSINC/QRPGSRC,QUSRSPLA
+     I*** START HEADER FILE SPECIFICATIONS ************************
+     I*
+     I*Header File Name: H/QUSRSPLA
+     I*
+     I*Descriptive Name: Retrieve spool file attributes.
+     
+     I*Description: The Retrieve Spooled File Attributes APi
+     I*          returns specific information about a spooled
+     I*          file into a receiver variable.
+     I*
+     I*Header Files Included: h/decimal
+     I*
+     I*Macros List: None.
+     I*
+     I*Structure List: Qus_SPLA0100_t
+     I*             Qus_SPLA0200_t
+     I*             Qus_UDOPTENT_t
+     I*             Qus_Usr_Lib_E_t
+     I*             Qus_Edge_Stitch_Stpl_Pos_E_t
+     I*             Qus_Sadl_Stitch_Stpl_Off_E_t
+     I*             Qsp_Splf_Libl_E_t
+     I*             Qsp_IPP_Splf_Attrs_t
+     I*
+     I*Function Prototype List: QUSRSPLA
+     I*
+     I*Change Activity:
+     I*
+     I*CFD List:
+     I*
+     I*FLAG REASON       LEVEL DATE   PGMR      CHANGE DESCRIPTION
+     I*---- ------------ ----- ------ --------- ------------------
+     I*$A0= D2862000     3D10  940213 LUPA:     New Include
+     I*$A1= D9171000     3D60  950117 AGLENSKI: Print openness.
+     I*$A3= D94979       4D20  970111 DWIGHT:   Decimal Format
+     I*                                      support.
+     I*$A4= D95075       4D20  970205 DWIGHT:   Support for Point
+     I*                                      Sizes on DBCS
+     I*                                      Coded Font, Coded
+     I*                                      Font, and Font
+     I*                                      Character Set
+     I*$A5= D94929       4D30  970722 DWIGHT:   Support for Date
+     I*                                      file was last
+     I*                                      accessed, Spooled
+     I*                                      file size, and
+     I*                                      ASP number.
+     I*$A6= D95677       4D30  970722 DWIGHT:   Support for
+     I*                                      IPDS pass through,
+     I*                                      User resource
+     I*                                      library list,
+     I*                                      Corner stapling,
+     I*                                      Edge stitching and
+     I*                                      Font resolution.
+     I*$A7= D95712       4D30  971105           Support ACIF
+     I*                                      attributes
+     I*$A8= D95966       4D40  980326 RJOHNSON: Add total number
+     I*                                      of bytes of data
+     I*                                      stream for spooled
+     I*                                      file.
+     I*$A9= D95864       4D40  980514           Support for Saddle
+     I*                                      stitching and
+     I*                                      Constant Back OVL
+     I*$AA= D97433       5D10  991021           Support for record
+     I*                                      format page defs.
+     I*                                      and Line Data to
+     I*                                      AFPDS conversion
+     I*$AB= D97516       5D10  991026           Support for
+     I*                                      increase in
+     I*                                      number of libs in
+     I*                                      a job's library
+     I*                                      list.
+     I*$AC= D97976       5D10  991026           Support for IPP
+     I*$AE= D97260       5D20  010105 ROCH:     Decouple Splf from
+     I*                                      Job.
+     I*
+     I*End CFD List.
+     I*
+     I*Additional notes about the Change Activity
+     I*End Change Activity.
+     I*** END HEADER FILE SPECIFICATIONS **************************
+     I****************************************************************
+     I*Prototype for calling Spooled File and Print API QUSRSPLA
+     I****************************************************************
+     I              'QUSRSPLA'            C         QUSFWB
+     I****************************************************************
+     I****************************************************************
+     I*Structure for User Defined Options
+     I****
+     I*The following describes the user defined option entries in
+     I*format SPLA0200 and SPLA0100.
+     I*
+     I*Usr_Def_Options_Offset       provides the offset
+     I*Usr_Def_Option_Number        provides the number of repeated
+     I*                          option entries.
+     I*
+     I****************************************************************
+     IQUSK2       DS
+     I*                                             Qus UDOPTENT
+     I                                        1  10 QUSK2B
+     I*                                             Usr Def Option One
+     I                                       11  20 QUSK2C
+     I*                                             Usr Def Option Two
+     I                                       21  30 QUSK2D
+     I*                                             Usr Def Option Three
+     I                                       31  40 QUSK2F
+     I*                                             Usr Def Option Four
+     I****************************************************************
+     I*Structure for User Resource Libraries
+     I****
+     I*The following describes the user resource library entries in
+     I*format SPLA0200.
+     I*
+     I*Usr_Rsc_Libl_Off             provides the offset
+     I*Usr_Rsc_Libl_Nbr             provides the number of repeated
+     I*                          library entries.
+     I*
+     I****************************************************************
+     IQUSLC       DS
+     I*                                             Qus Usr Lib E
+     I                                        1  10 QUSLCB
+     I*                                             Usr Resource Lib Name
+     I****************************************************************
+     I*Structure for Edge Stitch Staple Positions
+     I****
+     I*The following describes the edge stitch staple position
+     I*entries in format SPLA0200.
+     I*
+     I*Staple_Position_Offset       provides the offset
+     I*Nbr_of_Staple_Positions      provides the number of repeated
+     I*                          staple position entries.
+     I*
+     I****************************************************************
+     IQUSLD       DS
+     I*                                             Qus Edge Stitch Stpl Pos E
+     I                                    P   1   85QUSLDB
+     I*                                             Staple Position
+     I****************************************************************
+     I*Structure for Saddle Stitch Staple Offsets
+     I****
+     I*The following describes the saddle stitch staple offset
+     I*entries in format SPLA0200.
+     I*
+     I*Off_Saddle_Staple_Off        provides the offset
+     I*Nbr_of_Saddle_Stpl_Off       provides the number of repeated
+     I*                          staple offset entries.
+     I*
+     I****************************************************************
+     IQUSLJ       DS
+     I*                                             Qus Sadl Stitch Stpl Off E
+     I                                    P   1   85QUSLJB
+     I*                                             Staple Offset
+     I****************************************************************
+     I*Structure for Spooled file library name entries
+     I****
+     I*The following describes the library name entries in format
+     I*SPLA0200.
+     I*
+     I*Off_Splf_Libl                provides the offset
+     I*Nbr_of_Libraries             provides the number of repeated
+     I*                          library name entries.
+     I*
+     I****************************************************************
+     IQUSLQ       DS
+     I*                                             Qsp Splf Libl E
+     I                                        1  10 QUSLQB
+     I*                                             Library Name
+     I****************************************************************
+     I*Structure for Internet Print Protocol Spooled File Attributes
+     I****
+     I*The following describes the IPP spooled file attributes in
+     I*format SPLA0200.
+     I*
+     I*Off_IPP_Attrs                provides the offset
+     I*
+     I****************************************************************
+     IQUSLR       DS
+     I*                                             Qsp IPP Splf Attrs
+     I                                    B   1   40QUSLRB
+     I*                                             Length of IPP Attrs
+     I                                    B   5   80QUSLRC
+     I*                                             CCSID of IPP Attrs
+     I                                        9  71 QUSLRD
+     I*                                             Nat Lang of IPP Attrs
+     I                                       72 198 QUSLRF
+     I*                                             IPP Printer Name
+     I                                      199 453 QUSLRG
+     I*                                             IPP Job Name
+     I                                      454 516 QUSLRH
+     I*                                             IPP Job Name Natural Languag
+     I                                      517 771 QUSLRJ
+     I*                                             IPP Originating User Name
+     I                                      772 834 QUSLRK
+     I*                                             IPP Orig User Name Nat Lang
+     I*                                     835 835 QUSLRL
+     I*
+     I*                                             Reserved
+     I****************************************************************
+     I*Structure for SPLA0100 format
+     I****
+     I*NOTE:  The following type definition only defines the fixed
+     I*    portion of the format.  Any varying length fields must
+     I*    be defined by the user.
+     I****************************************************************
+     IQUSFX       DS
+     I*                                             Qus SPLA0100
+     I                                    B   1   40QUSFXB
+     I*                                             Bytes Return
+     I                                    B   5   80QUSFXC
+     I*                                             Bytes Avail
+     I                                        9  24 QUSFXD
+     I*                                             Int Job ID
+     I                                       25  40 QUSFXF
+     I*                                             Int Splf ID
+     I                                       41  50 QUSFXG
+     I*                                             Job Name
+     I                                       51  60 QUSFXH
+     I*                                             Usr Name
+     I                                       61  66 QUSFXJ
+     I*                                             Job Number
+     I                                       67  76 QUSFXK
+     I*                                             Splf Name
+     I                                    B  77  800QUSFXL
+     I*                                             Splf Number
+     I                                       81  90 QUSFXM
+     I*                                             Form Type
+     I                                       91 100 QUSFXN
+     I*                                             Usr Data
+     I                                      101 110 QUSFXP
+     I*                                             Status
+     I                                      111 120 QUSFXQ
+     I*                                             File Avail
+     I                                      121 130 QUSFXR
+     I*                                             Hold File
+     I                                      131 140 QUSFXS
+     I*                                             Save File
+     I                                    B 141 1440QUSFXT
+     I*                                             Total Pages
+     I                                    B 145 1480QUSFXV
+     I*                                             Curr Page
+     I                                    B 149 1520QUSFXW
+     I*                                             Start Page
+     I                                    B 153 1560QUSFXX
+     I*                                             End Page
+     I                                    B 157 1600QUSFXY
+     I*                                             Last Page Print
+     I                                    B 161 1640QUSFXZ
+     I*                                             Rest Page
+     I                                    B 165 1680QUSFX0
+     I*                                             Total Copies
+     I                                    B 169 1720QUSFX1
+     I*                                             Copies Rem
+     I                                    B 173 1760QUSFX2
+     I*                                             Lines Per Inch
+     I                                    B 177 1800QUSFX3
+     I*                                             Char Per Inch
+     I                                      181 182 QUSFX4
+     I*                                             Output Priority
+     I                                      183 192 QUSFX5
+     I*                                             Outq Name
+     I                                      193 202 QUSFX6
+     I*                                             Outq Lib
+     I                                      203 209 QUSFX7
+     I*                                             Date File Open
+     I                                      210 215 QUSFX8
+     I*                                             Time File Open
+     I                                      216 225 QUSFX9
+     I*                                             Dev File Name
+     I                                      226 235 QUSFYB
+     I*                                             Dev File Lib
+     I                                      236 245 QUSFYC
+     I*                                             Pgm Name
+     I                                      246 255 QUSFYD
+     I*                                             Pgm Lib
+     I                                      256 270 QUSFYF
+     I*                                             Count Code
+     I                                      271 300 QUSFYG
+     I*                                             Print Text
+     I                                    B 301 3040QUSFYH
+     I*                                             Record Length
+     I                                    B 305 3080QUSFYJ
+     I*                                             Max Records
+     I                                      309 318 QUSFYK
+     I*                                             Dev Type
+     I                                      319 328 QUSFYL
+     I*                                             Ptr Dev Type
+     I                                      329 340 QUSFYM
+     I*                                             Doc Name
+     I                                      341 404 QUSFYN
+     I*                                             Folder Name
+     I                                      405 412 QUSFYP
+     I*                                             S36 Proc Name
+     I                                      413 422 QUSFYQ
+     I*                                             Print Fidel
+     I                                      423 423 QUSFYR
+     I*                                             Repl Unprint
+     I                                      424 424 QUSFYS
+     I*                                             Repl Char
+     I                                    B 425 4280QUSFYT
+     I*                                             Page Length
+     I                                    B 429 4320QUSFYV
+     I*                                             Page Width
+     I                                    B 433 4360QUSFYW
+     I*                                             Number Separate
+     I                                    B 437 4400QUSFYX
+     I*                                             Overflow Line Nm
+     I                                      441 450 QUSFYY
+     I*                                             DBCS Data
+     I                                      451 460 QUSFYZ
+     I*                                             DBCS Ext Chars
+     I                                      461 470 QUSFY0
+     I*                                             DBCS SOSI
+     I                                      471 480 QUSFY1
+     I*                                             DBCS Char Rotate
+     I                                    B 481 4840QUSFY2
+     I*                                             DBCS Cpi
+     I                                      485 494 QUSFY3
+     I*                                             Grph Char Set
+     I                                      495 504 QUSFY4
+     I*                                             Code Page
+     I                                      505 514 QUSFY5
+     I*                                             Form Def Name
+     I                                      515 524 QUSFY6
+     I*                                             Form Def Lib
+     I                                    B 525 5280QUSFY7
+     I*                                             Source Drawer
+     I                                      529 538 QUSFY8
+     I*                                             Print Font
+     I                                      539 544 QUSFY9
+     I*                                             S36 Spl ID
+     I                                    B 545 5480QUSFZB
+     I*                                             Page Rotate
+     I                                    B 549 5520QUSFZC
+     I*                                             Justification
+     I                                      553 562 QUSFZD
+     I*                                             Duplex
+     I                                      563 572 QUSFZF
+     I*                                             Fold
+     I                                      573 582 QUSFZG
+     I*                                             Ctrl Char
+     I                                      583 592 QUSFZH
+     I*                                             Align Forms
+     I                                      593 602 QUSFZJ
+     I*                                             Print Quality
+     I                                      603 612 QUSFZK
+     I*                                             Form Feed
+     I                                      613 683 QUSFZL
+     I*                                             Disk Volume
+     I                                      684 700 QUSFZM
+     I*                                             Disk Label
+     I                                      701 710 QUSFZN
+     I*                                             Exch Type
+     I                                      711 720 QUSFZP
+     I*                                             Char Code
+     I                                    B 721 7240QUSFZQ
+     I*                                             Nmbr Disk Rcrds
+     I                                    B 725 7280QUSFZR
+     I*                                             Multiup
+     I                                      729 738 QUSFZS
+     I*                                             Frnt Ovrly Name
+     I                                      739 748 QUSFZT
+     I*                                             Frnt Ovrly Lib Name
+     I                                    P 749 7565QUSFZV
+     I*                                             Frnt Ovrly Off Dn
+     I                                    P 757 7645QUSFZW
+     I*                                             Frnt Ovrly Off Across
+     I                                      765 774 QUSFZX
+     I*                                             Bck Ovrly Name
+     I                                      775 784 QUSFZY
+     I*                                             Bck Ovrly Lib Name
+     I                                    P 785 7925QUSFZZ
+     I*                                             Bck Ovrly Off Dn
+     I                                    P 793 8005QUSFZ0
+     I*                                             Bck Ovrly Off Across
+     I                                      801 810 QUSFZ1
+     I*                                             Unit Measure
+     I                                      811 820 QUSFZ2
+     I*                                             Page Definition
+     I                                      821 830 QUSFZ3
+     I*                                             Page Definition Lib
+     I                                      831 840 QUSFZ4
+     I*                                             Line Spacing
+     I                                    P 841 8485QUSFZ5
+     I*                                             Point Size
+     I                                    P 849 8565QUSFZ6
+     I*                                             Frnt Margin Off Dn
+     I                                    P 857 8645QUSFZ7
+     I*                                             Frnt Margin Off Acr
+     I                                    P 865 8725QUSFZ8
+     I*                                             Back Margin Off Dn
+     I                                    P 873 8805QUSFZ9
+     I*                                             Back Margin Off Acr
+     I                                    P 881 8885QUSF0B
+     I*                                             Length Of Page
+     I                                    P 889 8965QUSF0C
+     I*                                             Width Of Page
+     I                                      897 906 QUSF0D
+     I*                                             Measure Method
+     I                                      907 907 QUSF0F
+     I*                                             Afp Resource
+     I                                      908 917 QUSF0G
+     I*                                             Font Char Set
+     I                                      918 927 QUSF0H
+     I*                                             Font Char Set Lib
+     I                                      928 937 QUSF0J
+     I*                                             Code Page Name
+     I                                      938 947 QUSF0K
+     I*                                             Code Page Lib
+     I                                      948 957 QUSF0L
+     I*                                             Coded Font Name
+     I                                      958 967 QUSF0M
+     I*                                             Coded Font Lib
+     I                                      968 977 QUSF0N
+     I*                                             DBCS Coded Font Name
+     I                                      978 987 QUSF0P
+     I*                                             DBCS Coded Font Lib
+     I                                      988 997 QUSF0Q
+     I*                                             User Defined File
+     I                                      9981007 QUSF0R
+     I*                                             Reduce Output
+     I                                     10081008 QUSK3N
+     I*                                             Constant Back Overlay
+     I                                    B100910120QUSF0T
+     I*                                             Output Bin
+     I                                    B101310160QUSF0V
+     I*                                             CCSID
+     I                                     10171116 QUSF0W
+     I*                                             User Text
+     I                                     11171124 QUSF0X
+     I*                                             Original System
+     I                                     11251132 QUSF0Y
+     I*                                             Original Net ID
+     I                                     11331142 QUSF0Z
+     I*                                             Splf Creator
+     I                                     11431144 QUSF00
+     I*                                             Reserved5
+     I                                    B114511480QUSF01
+     I*                                             Usr Def Options Offset
+     I                                    B114911520QUSF02
+     I*                                             Usr Def Options Number
+     I                                    B115311560QUSF03
+     I*                                             Usr Def Options Entry Length
+     I                                     11571411 QUSF04
+     I*                                             Usr Defined Data
+     I                                     14121421 QUSF05
+     I*                                             Usr Def Object Name
+     I                                     14221431 QUSF06
+     I*                                             Usr Def Object Lib
+     I                                     14321441 QUSF07
+     I*                                             Usr Def Object Type
+     I                                     14421444 QUSK3J
+     I*                                             Reserved6
+     I                                    P144514525QUSK3F
+     I*                                             Character Set Point Size
+     I                                    P145314605QUSK3G
+     I*                                             Coded Font Point Size
+     I                                    P146114685QUSK3H
+     I*                                             DBCS Coded Font Point Size
+     I                                    B146914720QUSK3K
+     I*                                             Spooled File ASP
+     I                                    B147314760QUSK3L
+     I*                                             Spooled File Size
+     I                                    B147714800QUSK3M
+     I*                                             Splf Size Multiplier
+     I                                    B148114840QUSK3P
+     I*                                             IPP JobId
+     I                                     14851485 QUSK3Q
+     I*                                             Splf Crt Security Method
+     I                                     14861486 QUSK3R
+     I*                                             Splf Authentication Method
+     I                                     14871493 QUSK3S
+     I*                                             Wtr Begin Process Date
+     I                                     14941499 QUSK3T
+     I*                                             Wtr Begin Process Time
+     I                                     15001506 QUSK3V
+     I*                                             Wtr Complete Proc Date
+     I                                     15071512 QUSK3W
+     I*                                             Wtr Complete Proc Time
+     I                                     15131520 QUSK3X
+     I*                                             Job System Name
+     I*                                    15211560 QUSF08
+     I*
+     I*                                  Varying length
+     I****************************************************************
+     I*Structure for SPLA0200 format
+     I****                                                           *
+     I*NOTE:  The following type definition only defines the fixed
+     I*    portion of the format.  Any varying length fields must
+     I*    be defined by the user.
+     I****************************************************************
+     IQUSF1       DS
+     I*                                             Qus SPLA0200
+     I                                    B   1   40QUSF1B
+     I*                                             Bytes Return
+     I                                    B   5   80QUSF1C
+     I*                                             Bytes Avail
+     I                                        9  16 QUSF1D
+     I*                                             Format Name
+     I                                       17  32 QUSF1F
+     I*                                             Int Job ID
+     I                                       33  48 QUSF1G
+     I*                                             Int Splf ID
+     I                                       49  58 QUSF1H
+     I*                                             Job Name
+     I                                       59  68 QUSF1J
+     I*                                             Usr Name
+     I                                       69  74 QUSF1K
+     I*                                             Job Number
+     I                                       75  84 QUSF1L
+     I*                                             Splf Name
+     I                                    B  85  880QUSF1M
+     I*                                             Splf Number
+     I                                       89  98 QUSF1N
+     I*                                             Form Type
+     I                                       99 108 QUSF1P
+     I*                                             Usr Data
+     I                                      109 118 QUSF1Q
+     I*                                             Status
+     I                                      119 128 QUSF1R
+     I*                                             File Avail
+     I                                      129 138 QUSF1S
+     I*                                             Hold File
+     I                                      139 148 QUSF1T
+     I*                                             Save File
+     I                                    B 149 1520QUSF1V
+     I*                                             Total Pages
+     I                                    B 153 1560QUSF1W
+     I*                                             Curr Page
+     I                                    B 157 1600QUSF1X
+     I*                                             Start Page
+     I                                    B 161 1640QUSF1Y
+     I*                                             End Page
+     I                                    B 165 1680QUSF1Z
+     I*                                             Last Page Print
+     I                                    B 169 1720QUSF10
+     I*                                             Rest Page
+     I                                    B 173 1760QUSF11
+     I*                                             Total Copies
+     I                                    B 177 1800QUSF12
+     I*                                             Copies Rem
+     I                                    B 181 1840QUSF13
+     I*                                             Lines Per Inch
+     I                                    B 185 1880QUSF14
+     I*                                             Char Per Inch
+     I                                      189 190 QUSF15
+     I*                                             Output Priority
+     I                                      191 200 QUSF16
+     I*                                             Outq Name
+     I                                      201 210 QUSF17
+     I*                                             Outq Lib
+     I                                      211 217 QUSF18
+     I*                                             Date File Open
+     I                                      218 223 QUSF19
+     I*                                             Time File Open
+     I                                      224 233 QUSF2B
+     I*                                             Dev File Name
+     I                                      234 243 QUSF2C
+     I*                                             Dev File Lib
+     I                                      244 253 QUSF2D
+     I*                                             Pgm Name
+     I                                      254 263 QUSF2F
+     I*                                             Pgm Lib
+     I                                      264 278 QUSF2G
+     I*                                             Count Code
+     I                                      279 308 QUSF2H
+     I*                                             Print Text
+     I                                    B 309 3120QUSF2J
+     I*                                             Record Length
+     I                                    B 313 3160QUSF2K
+     I*                                             Max Records
+     I                                      317 326 QUSF2L
+     I*                                             Dev Type
+     I                                      327 336 QUSF2M
+     I*                                             Ptr Dev Type
+     I                                      337 348 QUSF2N
+     I*                                             Doc Name
+     I                                      349 412 QUSF2P
+     I*                                             Folder Name
+     I                                      413 420 QUSF2Q
+     I*                                             S36 Proc Name
+     I                                      421 430 QUSF2R
+     I*                                             Print Fidel
+     I                                      431 431 QUSF2S
+     I*                                             Repl Unprint
+     I                                      432 432 QUSF2T
+     I*                                             Repl Char
+     I                                    B 433 4360QUSF2V
+     I*                                             Page Length
+     I                                    B 437 4400QUSF2W
+     I*                                             Page Width
+     I                                    B 441 4440QUSF2X
+     I*                                             Number Separate
+     I                                    B 445 4480QUSF2Y
+     I*                                             Overflow Line Nm
+     I                                      449 458 QUSF2Z
+     I*                                             DBCS Data
+     I                                      459 468 QUSF20
+     I*                                             DBCS Ext Chars
+     I                                      469 478 QUSF21
+     I*                                             DBCS SOSI
+     I                                      479 488 QUSF22
+     I*                                             DBCS Char Rotate
+     I                                    B 489 4920QUSF23
+     I*                                             DBCS Cpi
+     I                                      493 502 QUSF24
+     I*                                             Grph Char Set
+     I                                      503 512 QUSF25
+     I*                                             Code Page
+     I                                      513 522 QUSF26
+     I*                                             Form Def Name
+     I                                      523 532 QUSF27
+     I*                                             Form Def Lib
+     I                                    B 533 5360QUSF28
+     I*                                             Source Drawer
+     I                                      537 546 QUSF29
+     I*                                             Print Font
+     I                                      547 552 QUSF3B
+     I*                                             S36 Spl ID
+     I                                    B 553 5560QUSF3C
+     I*                                             Page Rotate
+     I                                    B 557 5600QUSF3D
+     I*                                             Justification
+     I                                      561 570 QUSF3F
+     I*                                             Duplex
+     I                                      571 580 QUSF3G
+     I*                                             Fold
+     I                                      581 590 QUSF3H
+     I*                                             Ctrl Char
+     I                                      591 600 QUSF3J
+     I*                                             Align Forms
+     I                                      601 610 QUSF3K
+     I*                                             Print Quality
+     I                                      611 620 QUSF3L
+     I*                                             Form Feed
+     I                                      621 691 QUSF3M
+     I*                                             Disk Volume
+     I                                      692 708 QUSF3N
+     I*                                             Disk Label
+     I                                      709 718 QUSF3P
+     I*                                             Exch Type
+     I                                      719 728 QUSF3Q
+     I*                                             Char Code
+     I                                    B 729 7320QUSF3R
+     I*                                             Nmbr Disk Rcrds
+     I                                    B 733 7360QUSF3S
+     I*                                             Multiup
+     I                                      737 746 QUSF3T
+     I*                                             Frnt Ovrly Name
+     I                                      747 756 QUSF3V
+     I*                                             Frnt Ovrly Lib Name
+     I                                    P 757 7645QUSF3W
+     I*                                             Frnt Ovrly Off Dn
+     I                                    P 765 7725QUSF3X
+     I*                                             Frnt Ovrly Off Across
+     I                                      773 782 QUSF3Y
+     I*                                             Bck Ovrly Name
+     I                                      783 792 QUSF3Z
+     I*                                             Bck Ovrly Lib Name
+     I                                    P 793 8005QUSF30
+     I*                                             Bck Ovrly Off Dn
+     I                                    P 801 8085QUSF31
+     I*                                             Bck Ovrly Off Across
+     I                                      809 818 QUSF32
+     I*                                             Unit Measure
+     I                                      819 828 QUSF33
+     I*                                             Page Definition
+     I                                      829 838 QUSF34
+     I*                                             Page Definition Lib
+     I                                      839 848 QUSF35
+     I*                                             Line Spacing
+     I                                    P 849 8565QUSF36
+     I*                                             Point Size
+     I                                    B 857 8600QUSF37
+     I*                                             Max Data Record Size
+     I                                    B 861 8640QUSF38
+     I*                                             File Buffer Size
+     I                                      865 870 QUSF39
+     I*                                             File Level
+     I                                      871 886 QUSF4B
+     I*                                             Coded Font Array
+     I                                      887 896 QUSF4C
+     I*                                             Channel Mode
+     I                                    B 897 9000QUSF4D
+     I*                                             Channel Code1
+     I                                    B 901 9040QUSF4F
+     I*                                             Channel Code2
+     I                                    B 905 9080QUSF4G
+     I*                                             Channel Code3
+     I                                    B 909 9120QUSF4H
+     I*                                             Channel Code4
+     I                                    B 913 9160QUSF4J
+     I*                                             Channel Code5
+     I                                    B 917 9200QUSF4K
+     I*                                             Channel Code6
+     I                                    B 921 9240QUSF4L
+     I*                                             Channel Code7
+     I                                    B 925 9280QUSF4M
+     I*                                             Channel Code8
+     I                                    B 929 9320QUSF4N
+     I*                                             Channel Code9
+     I                                    B 933 9360QUSF4P
+     I*                                             Channel Code10
+     I                                    B 937 9400QUSF4Q
+     I*                                             Channel Code11
+     I                                    B 941 9440QUSF4R
+     I*                                             Channel Code12
+     I                                      945 952 QUSF4S
+     I*                                             Graphics Tokenl
+     I                                      953 962 QUSF4T
+     I*                                             Record Format
+     I                                      963 964 QUSF4V
+     I*                                             Reserved1
+     I                                    P 965 9725QUSF4W
+     I*                                             Height Drawer1
+     I                                    P 973 9805QUSF4X
+     I*                                             Width Drawer1
+     I                                    P 981 9885QUSF4Y
+     I*                                             Height Drawer2
+     I                                    P 989 9965QUSF4Z
+     I*                                             Width Drawer2
+     I                                    B 99710000QUSF40
+     I*                                             Number Buffers
+     I                                    B100110040QUSF41
+     I*                                             Max Form Width
+     I                                    B100510080QUSF42
+     I*                                             Alternate Form Width
+     I                                    B100910120QUSF43
+     I*                                             Alternate Form Length
+     I                                    B101310160QUSF44
+     I*                                             Alternate Lpi
+     I                                     10171018 QUSF45
+     I*                                             Text Flags
+     I                                     10191019 QUSF46
+     I*                                             Flg File Open
+     I                                     10201020 QUSF47
+     I*                                             Flg Est Pge Cnt
+     I                                     10211021 QUSF48
+     I*                                             Flg Pge Boundary
+     I                                     10221022 QUSF49
+     I*                                             Flg Trc
+     I                                     10231023 QUSF5B
+     I*                                             Flg Def Char
+     I                                     10241024 QUSF5C
+     I*                                             Flg Cpi
+     I                                     10251025 QUSF5D
+     I*                                             Flg Transparency
+     I                                     10261026 QUSF5F
+     I*                                             Flg Dbl Wide Char
+     I                                     10271027 QUSF5G
+     I*                                             Flg Char Rotate
+     I                                     10281028 QUSF5H
+     I*                                             Flg Code Page
+     I                                     10291029 QUSF5J
+     I*                                             Flg Fft Emphasis
+     I                                     10301030 QUSF5K
+     I*                                             Flg Scs3812
+     I                                     10311031 QUSF5L
+     I*                                             Flg Sld
+     I                                     10321032 QUSF5M
+     I*                                             Flg Gea
+     I                                     10331033 QUSF5N
+     I*                                             Flg Cmd5219
+     I                                     10341034 QUSF5P
+     I*                                             Flg Cmd3812
+     I                                     10351035 QUSF5Q
+     I*                                             Flg Fld Outline
+     I                                     10361036 QUSF5R
+     I*                                             Flg Final Frm Txt
+     I                                     10371037 QUSF5S
+     I*                                             Flg Barcode
+     I                                     10381038 QUSF5T
+     I*                                             Flg Color
+     I                                     10391039 QUSF5V
+     I*                                             Flg Drawer Chg
+     I                                     10401040 QUSF5W
+     I*                                             Flg Charid
+     I                                     10411041 QUSF5X
+     I*                                             Flg Lpi
+     I                                     10421042 QUSF5Y
+     I*                                             Flg Font
+     I                                     10431043 QUSF5Z
+     I*                                             Flg Highlight
+     I                                     10441044 QUSF50
+     I*                                             Flg Pge Rotate
+     I                                     10451045 QUSF51
+     I*                                             Flg Subscript
+     I                                     10461046 QUSF52
+     I*                                             Flg Superscript
+     I                                     10471047 QUSF53
+     I*                                             Flg Dds
+     I                                     10481048 QUSF54
+     I*                                             Flg Form Feed
+     I                                     10491049 QUSF55
+     I*                                             Flg Scs Data
+     I                                     10501050 QUSF56
+     I*                                             Flg User Gen Data
+     I                                     10511051 QUSF57
+     I*                                             Flg Graphics
+     I                                     10521052 QUSF58
+     I*                                             Flg Unrecogn Data
+     I                                     10531053 QUSF59
+     I*                                             Flg ASCII Trans
+     I                                     10541054 QUSF6B
+     I*                                             Flg Ipds Trans
+     I                                     10551055 QUSF6C
+     I*                                             Flg Office Vis
+     I                                     10561056 QUSF6D
+     I*                                             Flg No Lpi
+     I                                     10571057 QUSF6F
+     I*                                             Flg Cpa3353
+     I                                     10581058 QUSF6G
+     I*                                             Flg Set Excp
+     I                                     10591059 QUSF6H
+     I*                                             Flg Carriage Control
+     I                                     10601060 QUSF6J
+     I*                                             Flg Pge Pos
+     I                                     10611061 QUSF6K
+     I*                                             Flg Invalid Char
+     I                                     10621062 QUSF6L
+     I*                                             Flg Lengths
+     I                                     10631063 QUSF6M
+     I*                                             Flg Pres5a
+     I                                     10641064 QUSF6N
+     I*                                             Flg Resrvd
+     I                                    B106510680QUSF6P
+     I*                                             Nbr Font Entries
+     I                                    B106910720QUSF6Q
+     I*                                             Nbr Lib Entries
+     I                                     10732225 QUSF6R
+     I*                                             Font Entries
+     I                                     22262856 QUSF6S
+     I*                                             Lib Entries
+     I                                     28572857 QUSF6T
+     I*                                             Native AFPDS
+     I                                     28582858 QUSF6V
+     I*                                             JOBCCSID For CHRID
+     I                                     28592859 QUSF74
+     I*                                             S36 Continue Yes
+     I                                     28602869 QUSF75
+     I*                                             Decimal Format Used
+     I                                     28702876 QUSK9B
+     I*                                             Date File Last Accessed
+     I                                     28772877 QUSK9G
+     I*                                             Page Groups
+     I                                     28782878 QUSK9H
+     I*                                             Group Level Index
+     I                                     28792879 QUSK9J
+     I*                                             Page Level Index
+     I                                     28802880 QUSK9K
+     I*                                             IPDS Pass Through
+     I                                    B288128840QUSK9L
+     I*                                             Off Usr Rsc Libl
+     I                                    B288528880QUSK9M
+     I*                                             Nbr Usr Rsc Libl
+     I                                    B288928920QUSK9N
+     I*                                             Len Usr Rsc Libl Entry
+     I                                     28932894 QUSK9P
+     I*                                             Reserved8
+     I                                     28952895 QUSK9Q
+     I*                                             Corner Stapling
+     I                                     28962896 QUSK9R
+     I*                                             Edge Stitch Edge Ref
+     I                                    P289729045QUSK9S
+     I*                                             Offset From Edge Ref
+     I                                    B290529080QUSK9T
+     I*                                             Edge Stitch Nbr Staples
+     I                                    B290929120QUSK9V
+     I*                                             Offset Staple Positions
+     I                                    B291329160QUSK9W
+     I*                                             Nbr of Staple Positions
+     I                                    B291729200QUSK9X
+     I*                                             Len Staple Position Entry
+     I                                     29212930 QUSK9Y
+     I*                                             Font Resolution
+     I                                     29312931 QUSLKG
+     I*                                             Rcd Fmt Name Present
+     I                                     29322932 QUSK95
+     I*                                             Saddle Stitch Edge Ref
+     I                                    B293329360QUSK96
+     I*                                             Saddle Stitch Nbr Staples
+     I                                    B293729400QUSK97
+     I*                                             Off Saddle Staple Off
+     I                                    B294129440QUSK98
+     I*                                             Nbr of Saddle Stpl Off
+     I                                    B294529480QUSK99
+     I*                                             Len Saddle Staple Off Entry
+     I                                    P294929560QUSK94
+     I*                                             Data Stream Size
+     I                                    B295729600QUSLKH
+     I*                                             Off Splf Libl
+     I                                    B296129640QUSLKJ
+     I*                                             Nbr of Libraries
+     I                                    B296529680QUSLKK
+     I*                                             Len Splf Libl Entry
+     I                                    B296929720QUSLKL
+     I*                                             Off IPP Attrs
+     I                                     29733152 QUSF6W
+     I*                                             Reserved2
+     I                                    P315331605QUSF6X
+     I*                                             Frnt Margin Off Dn
+     I                                    P316131685QUSF6Y
+     I*                                             Frnt Margin Off Acr
+     I                                    P316931765QUSF6Z
+     I*                                             Back Margin Off Dn
+     I                                    P317731845QUSF60
+     I*                                             Back Margin Off Acr
+     I                                    P318531925QUSF61
+     I*                                             Length Of Page
+     I                                    P319332005QUSF62
+     I*                                             Width Of Page
+     I                                     32013210 QUSF63
+     I*                                             Measure Method
+     I                                     32113211 QUSF64
+     I*                                             Afp Resource
+     I                                     32123221 QUSF65
+     I*                                             Font Char Set
+     I                                     32223231 QUSF66
+     I*                                             Font Char Set Lib
+     I                                     32323241 QUSF67
+     I*                                             Code Page Name
+     I                                     32423251 QUSF68
+     I*                                             Code Page Lib
+     I                                     32523261 QUSF69
+     I*                                             Coded Font Name
+     I                                     32623271 QUSF7B
+     I*                                             Coded Font Lib
+     I                                     32723281 QUSF7C
+     I*                                             DBCS Coded Font Name
+     I                                     32823291 QUSF7D
+     I*                                             DBCS Coded Font Lib
+     I                                     32923301 QUSF7F
+     I*                                             User Defined File
+     I                                     33023311 QUSF7G
+     I*                                             Reduce Output
+     I                                     33123312 QUSLKB
+     I*                                             Constant Back Overlay
+     I                                    B331333160QUSF7J
+     I*                                             Output Bin
+     I                                    B331733200QUSF7K
+     I*                                             CCSID
+     I                                     33213420 QUSF7L
+     I*                                             User Text
+     I                                     34213428 QUSF7M
+     I*                                             Original System
+     I                                     34293436 QUSF7N
+     I*                                             Original Net ID
+     I                                     34373446 QUSF7P
+     I*                                             Splf Creator
+     I                                     34473448 QUSF7Q
+     I*                                             Reserved5
+     I                                    B344934520QUSF7R
+     I*                                             Usr Def Options Offset
+     I                                    B345334560QUSF7S
+     I*                                             Usr Def Options Number
+     I                                    B345734600QUSF7T
+     I*                                             Usr Def Options Entry Length
+     I                                     34613715 QUSF7V
+     I*                                             Usr Defined Data
+     I                                     37163725 QUSF7W
+     I*                                             Usr Def Object Name
+     I                                     37263735 QUSF7X
+     I*                                             Usr Def Object Lib
+     I                                     37363745 QUSF7Y
+     I*                                             Usr Def Object Type
+     I                                     37463748 QUSF79
+     I*                                             Reserved6
+     I                                    P374937565QUSF76
+     I*                                             Character Set Point Size
+     I                                    P375737645QUSF77
+     I*                                             Coded Font Point Size
+     I                                    P376537725QUSF78
+     I*                                             DBCS Coded Font Point Size
+     I                                    B377337760QUSK9C
+     I*                                             Spooled File ASP
+     I                                    B377737800QUSK9D
+     I*                                             Spooled File Size
+     I                                    B378137840QUSK9F
+     I*                                             Splf Size Multiplier
+     I                                    B378537880QUSLKM
+     I*                                             IPP JobId
+     I                                     37893789 QUSLKN
+     I*                                             Splf Crt Security Method
+     I                                     37903790 QUSLKP
+     I*                                             Splf Authentication Method
+     I                                     37913797 QUSLKQ
+     I*                                             Wtr Begin Process Date
+     I                                     37983803 QUSLKR
+     I*                                             Wtr Begin Process Time
+     I                                     38043810 QUSLKS
+     I*                                             Wtr Complete Proc Date
+     I                                     38113816 QUSLKT
+     I*                                             Wtr Complete Proc Time
+     I                                     38173824 QUSLKV
+     I*                                             Job System Name
+     I*                                    38253864 QUSF7Z
+     I*                                 Varying length
+     I*                                    38653874 QUSK9Z
+     I*
+     I*                                   Varying length
+     I*                                    38753882 QUSK91
+     I*
+     I*                                                 Varying length
+     I*                                    38833890 QUSLKC
+     I*
+     I*                                                 Varying length
+     I*                                    38913900 QUSLKW
+     I*
+     I*                                       Varying length
+     I*                                         835 QUSLKY
+     I*                                   B390139040QUSLKZ
+     I*                                   B390539080QUSLK0
+     I*                                    39093971 QUSLK1
+     I*                                    39724098 QUSLK2
+     I*                                    40994353 QUSLK3
+     I*                                    43544416 QUSLK4
+     I*                                    44174671 QUSLK5
+     I*                                    46724734 QUSLK6
+     I*                                    47354735 QUSLK7
+     I*
+     I*                                        Varying length
+     I*****************************************************************
+     I* The following is copied from QSYSINC/QRPGSRC member QUSEC
+     I* so that the variable length field QUSBNG can be defined
+     I* as 100 bytes for exception data.  The defined field is
+     I* named EXCDTA.
+     I*****************************************************************
+     IQUSBN       DS
+     I*                                             Qus EC
+     I                                    B   1   40QUSBNB
+     I*                                             Bytes Provided
+     I                                    B   5   80QUSBNC
+     I*                                             Bytes Available
+     I                                        9  15 QUSBND
+     I*                                             Exception Id
+     I                                       16  16 QUSBNF
+     I*                                             Reserved
+     I*                                      17  17 QUSBNG
+     I*                                      Varying length
+     I                                       17 116 EXCDTA
+     IDATSTR      DS
+     I                                        1   1 DATCEN
+     I                                      202 203 DATYR
+     I                                      204 205 DATMTH
+     I                                      206 207 DATDAY
+     C* ***************************************************************
+     C* ***************************************************************
+     C*                                                               *
+     C*              EXECUTABLE CODE STARTS HERE                      *
+     C*                                                               *
+     C* ***************************************************************
+     C* ***************************************************************
+     C*                                                               *
+     C           *ENTRY    PLIST
+     C                     PARM           USRNAM 10
+     C                     PARM           OUTQ   20
+     C                     PARM           DLTDAT  7
+     C                     MOVE DLTDAT    TGTDAT
+     C                     Z-ADD0         DLTCNT
+     C                     MOVE *BLANKS   QUSBN
+     C                     Z-ADD0         QUSBNB
+     C*                                                               *
+     C* CREATE A USER SPACE TO STORE THE LIST OF SPOOLED FILES.       *
+     C*                                                               *
+     C                     CALL 'QUSCRTUS'
+     C                     PARM           USRSPC
+     C                     PARM *BLANKS   USEXAT 10
+     C                     PARM 1024      USSIZE
+     C                     PARM ' '       USINIT  1
+     C                     PARM '*CHANGE 'USAUTH 10
+     C                     PARM *BLANKS   USTEXT 50
+     C                     PARM '*YES    'USREPL 10
+     C                     PARM           QUSBN
+     C*                                                               *
+     C* FILL THE USER SPACE JUST CREATED WITH SPOOLED FILES AS        *
+     C* DEFINED IN THE CL COMMAND.                                    *
+     C*                                                               *
+     C                     CALL 'QUSLSPL'
+     C                     PARM           USRSPC
+     C                     PARM 'SPLF0100'FMTNM1  8
+     C                     PARM           USRNAM
+     C                     PARM           OUTQ
+     C                     PARM '*ALL    'FRMTYP 10
+     C                     PARM '*ALL    'USRDTA 10
+     C                     PARM           QUSBN
+     C*                                                               *
+     C* THE USER SPACE IS NOW FILLED WITH THE LIST OF SPOOLED FILES.  *
+     C* NOW USE THE QUSRTVUS API TO FIND THE NUMBER OF ENTRIES AND    *
+     C* THE OFFSET AND SIZE OF EACH ENTRY IN THE USER SPACE.          *
+     C*                                                               *
+     C                     Z-ADD140       GENLEN
+     C                     Z-ADD1         STRPOS
+     C*                                                               *
+     C                     CALL 'QUSRTVUS'
+     C                     PARM           USRSPC
+     C                     PARM           STRPOS
+     C                     PARM           GENLEN
+     C                     PARM           QUSBP
+     C                     PARM           QUSBN
+     C*                                                               *
+     C* CHECK THE GENERIC HEADER DATA STRUCTURE FOR NUMBER OF LIST    *
+     C* ENTRIES, OFFSET TO LIST ENTRIES, AND SIZE OF EACH LIST ENTRY. *
+     C*                                                               *
+     C                     Z-ADDQUSBPQ    STRPOS
+     C                     ADD  1         STRPOS
+     C                     Z-ADDQUSBPT    RTVLEN
+     C                     Z-ADD1520      RCVLEN
+     C***                  Z-ADD209       RCVLEN
+     C                     Z-ADD1         COUNT  150
+     C*                                                               *
+     C* ***************************************************************
+     C* ***************************************************************
+     C*                                                               *
+     C*     BEGINNING OF LOOP (DO WHILE COUNT <= QUSBPS)              *
+     C*                                                               *
+     C* ***************************************************************
+     C*                                                               *
+     C           COUNT     DOWLEQUSBPS
+     C*                                                               *
+     C* RETRIEVE THE INTERNAL JOB IDENTIFIER AND INTERNAL SPOOLED FILE*
+     C* IDENTIFIER FROM THE ENTRY IN THE USER SPACE.  THIS INFORMATION*
+     C* WILL BE USED TO RETRIEVE THE ATTRIBUTES OF THE SPOOLED FILE.  *
+     C* THIS WILL BE DONE FOR EACH ENTRY IN THE USER SPACE.           *
+     C*                                                               *
+     C                     CALL 'QUSRTVUS'
+     C                     PARM           USRSPC
+     C                     PARM           STRPOS
+     C                     PARM           RTVLEN
+     C                     PARM           QUSFT
+     C                     PARM           QUSBN
+     C*                                                               *
+     C* NOW RETRIEVE THE SPOOLED FILE ATTRIBUTES USING THE QUSRSPLA   *
+     C* API.                                                          *
+     C*                                                               *
+     C                     MOVE *BLANKS   JOBINF
+     C                     MOVEL'*INT'    JOBINF 26
+     C                     MOVE QUSFTH    QUSFXD
+     C                     MOVE QUSFTJ    QUSFXF
+     C                     MOVEL'*INT'    SPLFNM 10
+     C                     MOVE *BLANKS   SPLF#
+     C*                                                               *
+     C                     CALL 'QUSRSPLA'
+     C                     PARM           QUSFX
+     C                     PARM           RCVLEN
+     C                     PARM 'SPLA0100'FMTNM2  8
+     C                     PARM           JOBINF
+     C                     PARM           QUSFXD
+     C                     PARM           QUSFXF
+     C                     PARM           SPLFNM
+     C                     PARM           SPLF#
+     C                     PARM           QUSBN
+     C*                                                               *
+     C* CHECK QUSFX DATA STRUCTURE FOR DATE FILE OPENED.              *
+     C* DELETE SPOOLED FILES THAT ARE OLDER THAN THE TARGET DATE      *
+     C* SPECIFIED ON THE COMMAND.  A MESSAGE IS SENT FOR EACH SPOOLED *
+     C* FILE DELETED.                                                 *
+     C*                                                               *
+     C*                                                               *
+     C                     MOVE QUSFX7    DATSTR
+     C           DATYR     IFLT TGTYR
+     C                     EXSR CLDLT
+     C                     ELSE
+     C           DATYR     IFEQ TGTYR
+     C           DATMTH    IFLT TGTMTH
+     C                     EXSR CLDLT
+     C                     ELSE                            NOT LT MTH
+     C           DATMTH    IFEQ TGTMTH
+     C           DATDAY    IFLE TGTDAY
+     C                     EXSR CLDLT
+     C                     END                             FOR LE DAY
+     C                     END                             FOR EQ MTH
+     C                     END                             FOR ELSE MTH
+     C                     END                             FOR EQ YR
+     C                     END                             FOR ELSE YR
+     C*                                                               *
+     C* GO  BACK AND PROCESS THE REST OF THE ENTRIES IN THE USER      *
+     C* SPACE.                                                        *
+     C           QUSBPT    ADD  STRPOS    STRPOS
+     C           1         ADD  COUNT     COUNT
+     C                     END
+     C* ************************************************************* *
+     C* ************************************************************* *
+     C*                                                               *
+     C*             END OF LOOP                                       *
+     C*                                                               *
+     C* ************************************************************* *
+     C* ************************************************************* *
+     C*                                                               *
+     C* AFTER ALL SPOOLED FILES HAVE BEEN DELETED THAT MET THE        *
+     C* REQUIREMENTS, SEND A FINAL MESSAGE TO THE USER.               *
+     C* DELETE THE USER SPACE OBJECT THAT WAS CREATED.                *
+     C*                                                               *
+     C                     MOVELMSGTXT    MSGDT1
+     C                     CALL 'QMHSNDM'
+     C                     PARM *BLANKS   MSGID   7
+     C                     PARM *BLANKS   MSGFIL 20
+     C                     PARM           MSGDTA
+     C                     PARM 40        MSGDLN
+     C                     PARM '*INFO   'MSGTYP 10
+     C                     PARM           MSGQ
+     C                     PARM 1         MSGQ#
+     C                     PARM *BLANKS   RPYMQ  10
+     C                     PARM           MSGKEY
+     C                     PARM           QUSBN
+     C*                                                               *
+     C* DELETE THE USER SPACE OBJECT THAT WAS CREATED.                *
+     C*                                                               *
+     C                     CALL 'QUSDLTUS'
+     C                     PARM           USRSPC
+     C                     PARM           QUSBN
+     C*                                                               *
+     C*                                                               *
+     C* ************************************************************* *
+     C* ************************************************************* *
+     C*                                                               *
+     C*                      END OF PROGRAM                           *
+     C*                                                               *
+     C* ************************************************************* *
+     C                     RETRN
+     C*
+     C* ************************************************************* *
+     C*                                                               *
+     C*                  CLDLT  SUBROUTINE                            *
+     C*                                                               *
+     C* THIS SUBROUTINE CALLS A CL PROGRAM THAT WILL DELETE A SPOOLED *
+     C* FILE AND SEND A MESSAGE THAT THE SPOOLED FILE WAS DELETED.    *
+     C*                                                               *
+     C* ************************************************************* *
+     C*                                                               *
+     C           CLDLT     BEGSR
+     C*                                                               *
+     C* KEEP A COUNTER OF HOW MANY SPOOLED FILES ARE DELETED.         *
+     C*                                                               *
+     C                     ADD  1         DLTCNT
+     C                     MOVE QUSFXL    FIL#
+     C                     CALL 'CLDLT'
+     C                     PARM           QUSFXK
+     C                     PARM           QUSFXJ
+     C                     PARM           QUSFXH
+     C                     PARM           QUSFXG
+     C                     PARM           FIL#
+     C                     PARM           QUSFXM
+     C                     PARM           QUSFXN
+     C                     ENDSR

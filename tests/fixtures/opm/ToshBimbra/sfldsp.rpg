@@ -1,0 +1,174 @@
+      *%METADATA                                                       *
+      * %TEXT Subfile: Display (uses Drop and Fold)                    *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: SFLDSP
+     H*Purpose: Example Subfile Display program using SFLFOLD and SFLDROP
+     H*Function:
+     H*Notes:
+     H*Input:
+     H*Output:
+     H*Called by: Menu or Command Line
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     H*
+     F* * * * * * * * * * *   File Specifications   * * * * * * * * * * * *
+     FSFLDSP  CF  E                    WORKSTN      KINFDS DATA
+     F                                        SFLRRNKSFILE SFLDSP20
+     FSFLSAMP IF  E           K        DISK
+     I* * * * * * * * * * *   Input Specifications  * * * * * * * * * * * *
+     IDATA        DS
+     I*               Identifies the key pressed
+     I                                      369 369 KEY
+     I*
+     I* Program Status Data Structure:
+     I           SDS
+     I                                     *PROGRAM PGM
+     I*
+     I* 2 DS used by Date Conversion Subroutines CVT628 and CVT826:
+     I            DS
+     I                                        1   80DATE8
+     I                                        1   20C8
+     I                                        3   40Y8
+     I                                        5   80MD8
+     I                                        5   60M8
+     I                                        7   80D8
+     I*
+     I            DS
+     I                                        1   60DATE6
+     I                                        1   40MD6
+     I                                        1   20M6
+     I                                        3   40D6
+     I                                        5   60Y6
+     I*
+     I            DS
+     I                                        1  120WWSENO
+     I                                        1   20DEPCTP
+     I                                        3   90DECTNO
+     I                                       10  120DESEQ
+     I*
+     C* * * * * * * * * * *   Calculations   * * * * * * * * * * * * * * * **
+     C*
+     C           *IN03     DOUEQ*ON
+     C***        *IN03     DOWEQ*OFF
+     C*
+     C                     EXFMTSFLDSP10                   Key fields screen
+     C*
+     C                     EXSR CLRSF                      Clear Subfile
+     C*
+     C* Validate Customer Number:
+     C* (2 possible errors: Invalid Cust # or valid, but no data in subfile)
+     C           @SCNO     SETLLSFLSAMP                  99 = FOUND
+     C           *IN99     IFEQ *OFF                       NRF
+     C                     MOVE *ON       *IN98            ERROR MESSAGE
+     C                     ELSE
+     C                     EXSR BLDSF                      Build Subfile
+     C                     ENDIF
+     C*
+     C* If no records were added to subfile, do not attempt to display:
+     C           SFLRRN    IFEQ *ZERO
+     C                     MOVE *ON       *IN98            ERROR MESSAGE
+     C                     ELSE
+     C* Else, set indicators to display subfile.
+     C                     MOVE *OFF      *IN71            SFLDSP = N71
+     C                     WRITESFLDSP40                   Command Keys
+     C                     EXFMTSFLDSP30                   Subfile Control
+     C                     ENDIF                           IF SFLRRN= 0
+     C*
+     C                     ENDDO
+     C*
+     C                     MOVE *ON       *INLR
+     C                     RETRN
+     C*
+     C* * * * * * * * * * *   Subroutines  * * * * * * * * * * * * * * * * **
+     C*                    -----
+     C           *INZSR    BEGSR
+     C*
+     C* Key list for SFLSAMP file:
+     C           DEKLST    KLIST
+     C                     KFLD           DECNO
+     C                     KFLD           DEDENO
+     C                     KFLD           DEPCTP
+     C                     KFLD           DECTNO
+     C                     KFLD           DESEQ
+     C*
+     C                     ENDSR                           End *INZSR
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*          -----     -----
+     C           BLDSF     BEGSR
+     C*          Build subfile.
+     C*
+     C                     Z-ADD*ZERO     WWGTOT           INIT
+     C                     Z-ADD@SCNO     DECNO
+     C*
+     C                     Z-ADD*LOVAL    DEDENO
+     C                     Z-ADD*LOVAL    DEPCTP
+     C                     Z-ADD*LOVAL    DECTNO
+     C                     Z-ADD*LOVAL    DESEQ
+     C*
+     C* Priming read to see if there are any records to display:
+     C           DEKLST    SETLLSFLSAMP
+     C                     READ SFLSAMP                  99EOF
+     C*
+     C* If there is data in the file, but not for the customer number
+     C* entered, treat same as EOF by setting on *IN99 to stop processing:
+     C           *IN99     IFEQ *OFF
+     C           DECNO     ANDEQ@SCNO                      data for customer
+     C                     MOVE DECNM     @SCNM            Customer Name
+     C                     ELSE                            no data this cust
+     C                     MOVE *ON       *IN99            Stop reading
+     C                     ENDIF                           End DECNO=@SCNO
+     C*
+     C           *IN99     DOWEQ*OFF
+     C* Process record just read:
+     C           DEDEAM    ADD  DEPIAM    WWTOTL
+     C                     ADD  WWTOTL    WWGTOT           Accum Total $
+     C                     Z-ADDDEDDDT    DATE8
+     C                     EXSR CVT826
+     C                     Z-ADDDATE6     WWDDDT  60
+     C                     Z-ADDDESEDT    DATE8
+     C                     EXSR CVT826
+     C                     Z-ADDDATE6     WWSEDT  60
+     C                     Z-ADDDECKDT    DATE8
+     C                     EXSR CVT826
+     C                     Z-ADDDATE6     WWCKDT  60
+     C                     ADD  1         SFLRRN           Relative Record #
+     C                     WRITESFLDSP20               99  Write Subfile Rec
+     C*
+     C           SFLRRN    IFEQ 9999
+     C                     MOVE *ON       *IN99            Subfile full
+     C                     ENDIF
+     C*
+     C                     READ SFLSAMP                  99
+     C           DECNO     IFNE @SCNO
+     C                     MOVE *ON       *IN99
+     C                     ENDIF
+     C*
+     C                     ENDDO                           END DOW IN99 OFF
+     C*
+     C                     ENDSR                           End BLDSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           CVT826    BEGSR
+     C* Convert 8-digit CCYYMMDD dates to 6-digit MMDDYY format:
+     C                     Z-ADDMD8       MD6
+     C                     Z-ADDY8        Y6
+     C                     ENDSR                           End CVT826
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           CLRSF     BEGSR
+     C*          Clear subfile and reset subfile display indicator.
+     C*
+     C                     MOVE *ON       *IN71            SFLCLR Keyword
+     C                     WRITESFLDSP30                   SFLCTL Record Fmt
+     C                     MOVE *OFF      *IN71            SFLDSP Keyword
+     C*
+     C* Reset subfile record number:
+     C                     Z-ADD*ZERO     SFLRRN
+     C*
+     C                     ENDSR                           End CLRSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

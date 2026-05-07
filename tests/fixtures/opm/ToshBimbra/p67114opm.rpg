@@ -1,0 +1,18 @@
+      *%METADATA                                                       *
+      * %TEXT Call P67114                                              *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: P67114
+     H*Function:
+     H*Input:
+     H*Output:
+     H*Called by:
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     H*
+     C* * * * * * * * * *  Calculations  * * * * * * * * * * * * * * * * * * * *
+     C*
+     C                     CALL 'P67114'               99
+     C*
+     C                     MOVE *ON       *INLR
+     C*

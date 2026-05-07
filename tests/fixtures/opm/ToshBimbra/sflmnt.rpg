@@ -1,0 +1,242 @@
+      *%METADATA                                                       *
+      * %TEXT Subfile: Maintenance (Enter/Update)                      *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: SFLMNT
+     H*Purpose: Example of using a Subfile for file maintenance.
+     H*Function: 1. Entering data in a blank field adds it to the file.
+     H*          2. Typing over existing data changes it in the file.
+     H*          3. Blanking out all fields in a record deletes it.
+     H*Notes: Copy of the key field is maintained in a hidden subfile field.
+     H*Called by: Command line
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*  Indicator Usage Summary:
+     H*  --------- ----- -------
+     H* 01 - 24 = F1 - F24
+     H* 52 One or more fields in subfile record is in error (SFLNXTCHG)
+     H* 70 Display Subfile (SFLDSP)
+     H* 72 Initialize Subfile (SFLINZ)
+     H* 73 One or more records in subfile has fields in error - redisplay
+     H* 80 Duplicate key on Add (USR0035)
+     H* 81 Key field zero (USR0032)
+     H* 82 NRF on Chg/Inq/Del (USR0036)
+     H* 83 Last name is blank (USR0032)
+     H* 84 First name is blank (USR0032)
+     H*
+     H*  Display Screens:
+     H*  ------- -------
+     H* 10 = Subfile Data Records (SFL) and input options.
+     H* 20 = Subfile Control Record (SFLCTL) Title, Column Headings, Options
+     H* 30 = Trailer Record. Lists all valid command keys.
+     F* * * * * * * * * * *   File Specifications   * * * * * * * * * * * *
+     F*
+     FSFLMNT  CF  E                    WORKSTN      KINFDS DEVDS1
+     F                                        RRN   KSFILE SFLMNT10
+     FNAMEFILEUF  E           K        DISK                      A
+     F*
+     I* * * * * * * * * * *   Input Specifications  * * * * * * * * * * * *
+     I*
+     IDEVDS1      DS
+     I*               Identifies the key pressed
+     I                                      369 369 FKEY
+     I* Lowest RRN of subfile currently displayed:
+     I                                    B 378 3790LOWRRN
+     I*
+     I* Program Status Data Structure:
+     I           SDS
+     I                                     *PROGRAM PGM
+     I*
+     I* Function Key Definitions:
+     I*COPY SOURCE,UPKEYC0
+     I*
+     C* * * * * * * * * * *   Calculations   * * * * * * * * * * * * * * * *
+     C*
+     C                     EXSR INZSF                      Initialize Subfile
+     C                     EXSR BLDSF                      Build Subfile
+     C*
+     C           *IN73     DOUEQ*OFF                       73 off->no errors
+     C                     EXSR DSPSF                      Display Subfile
+     C                     EXSR CMDKEY                     Process Cmd Keys
+     C                     MOVE *OFF      *IN73            SFLNXTCHG (ERR)
+     C                     EXSR PRCSF                      Process Selection
+     C                     ENDDO                           End DOWH 73 = off
+     C*
+     C* * * * * * * * * * *   Subroutines  * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           INZSF     BEGSR
+     C                     MOVE *OFF      *IN70            SFLDSP
+     C                     MOVE *ON       *IN72            SFLINZ
+     C                     Z-ADD1         RRN              Relative Record #
+     C                     WRITESFLMNT20                   SFLCTL Record
+     C                     MOVE *OFF      *IN72            SFLINZ
+     C                     ENDSR                           INZSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           BLDSF     BEGSR
+     C* Build (Load) subfile:
+     C* Priming read to see if there are any records to display:
+     C           *LOVAL    SETLLNAMEFILE
+     C                     READ NAMEFILE                 99
+     C*
+     C           *IN99     DOWEQ*OFF
+     C* Process record just read; move fields, write SFL rec & update RRN
+     C*
+     C                     MOVE NAMEF     SNAMEF
+     C                     MOVE NAMEL     SNAMEL
+     C                     MOVE KEY       SKEY
+     C                     MOVE KEY       OLDKEY           Key: hidden copy
+     C                     WRITESFLMNT10                   Write Subfile Rec
+     C                     ADD  1         RRN              Relative Record #
+     C*
+     C           RRN       IFEQ 9999
+     C                     MOVE *ON       *IN99            Subfile full
+     C                     ENDIF
+     C*
+     C                     READ NAMEFILE                 99EOF on Data file
+     C                     ENDDO                           END DOW IN99 OFF
+     C*
+     C                     ENDSR                           BLDSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           DSPSF     BEGSR
+     C*
+     C* Display subfile:
+     C           RRN       IFGT *ZERO
+     C                     MOVE *ON       *IN70            SFLDSP = YES
+     C                     ELSE
+     C                     MOVE *OFF      *IN70            SFLDSP = NO
+     C                     ENDIF
+     C                     WRITESFLMNT30                   Valid Cmd Keys
+     C                     EXFMTSFLMNT20                   SFLCTL
+     C                     ENDSR                           DSPSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           CMDKEY    BEGSR
+     C* Process any Command Keys Pressed:
+     C*
+     C           *IN03     IFEQ *ON                        F3  = EXIT
+     C           *IN12     OREQ *ON                        F12 = CANCEL
+     C                     MOVE *ON       *INLR            EOJ
+     C                     RETRN
+     C                     ENDIF
+     C*
+     C                     ENDSR                           CMDKEY
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           PRCSF     BEGSR
+     C* Read changed records in subfile to check for selection:
+     C*
+     C                     READCSFLMNT10                 98EOF
+     C*
+     C           *IN98     DOWEQ*OFF
+     C                     MOVE *OFF      *IN52            SFLNXTCHG
+     C*
+     C* Update data base file & subfile to reflect user changes from screen:
+     C                     SELEC
+     C*
+     C* DELETE: (Hidden key field is not blank, but all data fields are.)
+     C           OLDKEY    WHNE *ZERO                      Hidden Key Field
+     C           SKEY      ANDEQ*ZERO                      Screen data field
+     C           SNAMEL    ANDEQ*BLANK                     Screen data field
+     C           SNAMEF    ANDEQ*BLANK                     Screen data field
+     C                     Z-ADDOLDKEY    KEY               Get old record
+     C           KEY       CHAINNAMEFILE             99     NRF
+     C           *IN99     IFEQ *OFF                        Found old rec
+     C                     DELETNAMEREC                     Delete old rec
+     C                     MOVE *OFF      *IN81            Reset Error Indic
+     C                     MOVE *OFF      *IN83            Reset Error Indic
+     C                     MOVE *OFF      *IN84            Reset Error Indic
+     C                     ENDIF                           END IN99 IFEQ OFF
+     C*
+     C*
+     C* ADD: (Hidden key field blank => record was not loaded into file.)
+     C           OLDKEY    WHEQ *ZERO                      OLD KEY = 0
+     C                     Z-ADDSKEY      KEY              Key from screen
+     C           KEY       CHAINNAMEFILE             99    NRF in file
+     C           *IN99     IFEQ *OFF                       IF *IN99 = OFF
+     C                     MOVE *ON       *IN80            ]DupKey ERRMSGID
+     C                     MOVE *ON       *IN52            ]Field in error
+     C                     ELSE                            ELSE NRF
+     C                     MOVE *OFF      *IN80            ]Reset Error Ind
+     C                     MOVE *OFF      *IN52            ]Error
+     C                     ENDIF                           END *IN99 = OFF
+     C*
+     C                     EXSR VALID                      Validate user dta
+     C           *IN52     IFEQ *OFF                       IF *IN52 = OFF
+     C                     Z-ADDSKEY      OLDKEY           ]Hidden Key
+     C                     MOVE SNAMEF    NAMEF            ]Screen to file
+     C                     MOVE SNAMEL    NAMEL            ]Screen to file
+     C                     WRITENAMEREC                    ]Add record
+     C                     ENDIF                           END *IN52 = OFF
+     C*
+     C*
+     C* CHANGE: (All other cases.)
+     C                     OTHER                           Otherwise
+     C                     MOVE SKEY      KEY               Key from screen
+     C           KEY       CHAINNAMEFILE             99     NRF
+     C           *IN99     IFEQ *ON                         IF *IN99 = ON
+     C                     MOVE *ON       *IN82             ]Error
+     C                     MOVE *ON       *IN52             ]Error
+     C                     ELSE                             ELSE Recrd found
+     C                     MOVE *OFF      *IN82             ]Reset Error Ind
+     C                     MOVE *OFF      *IN52             ]Error
+     C                     ENDIF                            END *IN99 = OFF
+     C*
+     C                     EXSR VALID                      Validate user dta
+     C           *IN52     IFEQ *OFF                       No errors
+     C                     MOVE SNAMEF    NAMEF            ]Screen to file
+     C                     MOVE SNAMEL    NAMEL            ]Screen to file
+     C                     UPDATNAMEREC                    ]Update file
+     C                     ENDIF                           END *IN52 = OFF
+     C*
+     C                     ENDSL                           END Select
+     C*
+     C*
+     C           *IN52     IFEQ *ON                        Errors(SFLNXTCHG)
+     C                     MOVE *ON       *IN73            A record has errs
+     C                     ENDIF                           END *IN52 = ON
+     C*
+     C                     UPDATSFLMNT10                   Update subfile
+     C                     MOVE *OFF      *IN52            Reset SFLNXTCHG
+     C*
+     C                     READCSFLMNT10                 98Next changed rec
+     C                     ENDDO                           END DOW 98 = OFF
+     C*
+     C                     ENDSR                           PRCSF
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*                    -----
+     C           VALID     BEGSR
+     C* Validate fields entered/changed by user:
+     C*
+     C*  Since SFLMSGID is specified on the control record, not the data
+     C* record, error indicators cannot be set off through DDS.
+     C*  When using subfiles, error indicators must be explicitly set off:
+     C                     MOVE *OFF      *IN81            Reset Error Indic
+     C                     MOVE *OFF      *IN83            Reset Error Indic
+     C                     MOVE *OFF      *IN84            Reset Error Indic
+     C*
+     C           SKEY      IFEQ *ZERO                      IF SKEY = 0
+     C                     MOVE *ON       *IN81            ]ERRMSGID USR0032
+     C                     MOVE *ON       *IN52            ]Field in error
+     C                     ENDIF                           END SKEY = 0
+     C*
+     C           SNAMEL    IFEQ *BLANK                     IF NAMEL = ' '
+     C                     MOVE *ON       *IN83            ]ERRMSGID
+     C                     MOVE *ON       *IN52            ]Field in error
+     C                     ENDIF                           END NAMEL = ' '
+     C*
+     C           SNAMEF    IFEQ *BLANK                     IF NAMEF = ' '
+     C                     MOVE *ON       *IN84            ]ERRMSGID
+     C                     MOVE *ON       *IN52            ]Field in error
+     C                     ENDIF                           END NAMEF = ' '
+     C*
+     C                     ENDSR                           END VALID
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

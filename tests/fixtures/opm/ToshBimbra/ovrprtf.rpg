@@ -1,0 +1,76 @@
+      *%METADATA                                                       *
+      * %TEXT Using the OVRPRTF command in an RPG program              *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: OVRPRTF
+     H*Purpose: Override a printer file AFTER the program has started.
+     H*Function:
+     H*Notes: File to be overridden declared as UC (User Controlled) soam.
+     H* it is not opened until after the program overrides are         am.
+     H* processed.                                                     am.
+     H*Input:
+     H*Output:
+     H*Called by:
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     H*
+     H* Indicator Usage Summary:
+     H* --------- ----- -------
+     FCUSTPF  IP  E                    DISK
+     FU5CHECKSO   F      80     OF     PRINTER                        UC
+     I* * * * * * * * * * *   Input Specifications  * * * * * * * * * * * *
+     I*
+     I* Constants:
+     I              'OVRPRTF -            C         OVRCMD
+     I              'FILE(U5CHECKS) -
+     I              'TOFILE(QPRINT) -
+     I              'PAGESIZE(42 80) -
+     I              'OVRFLW(40) -
+     I              'FORMTYPE(CHKS) -
+     I              'OUTQ('
+     I              ')'                   C         CLOSEP
+     I* Program Status Data Structure:
+     I           SDS
+     I                                     *PROGRAM PGM
+     I                                     *PARMS   #PARMS
+     I                                      244 253 WSID
+     I                                      254 263 URID
+     I*
+     C* * * * * * * * * * *   Calculations   * * * * * * * * * * * * * * * **
+     C*
+     C                     MOVEL'QPRINTS' PRID   10
+     C           OVRCMD    CAT  PRID:0    CMDSTR128 P
+     C                     CAT  CLOSEP:0  CMDSTR
+     C*
+     C                     Z-ADD128       CMDLEN 155
+     C                     CALL 'QCMDEXC'
+     C                     PARM           CMDSTR
+     C                     PARM           CMDLEN
+     C*
+     C                     OPEN U5CHECKS
+     C                     EXCPTHDR
+     C                     EXCPTLINE
+     C                     CLOSEU5CHECKS
+     C*
+     C                     MOVE *ON       *INLR
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     C*
+     C* * * * * * * * * * *   Subroutines  * * * * * * * * * * * * * * * * **
+     C*           -----    -----
+     C           *INZSR    BEGSR
+     C* Initial Subroutine; executed automatically when program starts:
+     C*
+     C* Get current time for 1P Header:
+     C                     TIME           TIME    60
+     C*
+     C                     ENDSR                           End *INZSR
+     C*                    -----
+     O* * * * * * * * * * *   Output Specifications   * * * * * * * * * * *
+     OU5CHECKSE  203           HDR
+     O                         PGM       10
+     O* Report name left justified in first 10 positions
+     O                                   63 'Report Title'
+     O* Report Title can be up to 50 characters; center between 40 and 90
+     O        E  1             LINE
+     O                         CCUST Z    5
+     O                         CNAME     31

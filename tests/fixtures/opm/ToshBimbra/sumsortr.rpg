@@ -1,0 +1,67 @@
+      *%METADATA                                                       *
+      * %TEXT Using OPNQRYF for a Summary Sort                         *
+      *%EMETADATA                                                      *
+     FTESTFILEIP  E                    DISK
+     FFILE2   IF  E                    DISK
+     FQPRINT  O   F     132     OF     PRINTER
+     I* DEFINE LEVEL BREAK:
+     ITESTREC
+     I                                              WAIST L1
+     I* Report title in Local Data Area
+     I           UDS
+     I                                        1  50 RPTNAM
+     I*
+     C*
+     C           INCSUM    IFNE *ZERO
+     C           INCOME    DIV  INCSUM    TEMP    54H
+     C           TEMP      MULT 100       PCT     52       % OF TOTAL
+     C                     ELSE
+     C                     Z-ADD*ZERO     PCT
+     C                     END
+     C*
+     C* At Level break, write out totals:
+     CL1                   MOVEL'TOTAL'   NAME      P
+     CL1                   EXCPTTOT                        Write Totals
+     C* Read summary record for next group:
+     CL1                   READ FILE2                    99EOF
+    C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+    C* INITALIZATION SUBROUTINE: EXECUTED ONCE AT BEGINNING OF JOB *
+    C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+    C*
+     C           *INZSR    BEGSR
+     C* Get current time for 1P Header:
+     C                     TIME           TIME    60
+     C* Get first record from summary file for percentages:
+     C                     READ FILE2                    99EOF
+     C                     ENDSR
+    O*********************** Output Specifications ************************
+     OQPRINT  H  203   1P
+     O       OR        OF
+     O                                   10 'SUMSORTR  '
+     O                         RPTNAM    63
+     O                                   95 'DATE'
+     O                         UDATE Y  104
+     O                         TIME     116 '  :  :  '
+     O                                  127 'Page'
+     O                         PAGE  Z  132
+     O        H  2     1P
+     O       OR        OF
+     O                                    4 'NAME'
+     O                                   19 'Amount'
+     O                                   29 'Income'
+     O                                   33 'B'
+     O                                   36 'W'
+     O                                   39 'H'
+     O                                   46 ' % '
+     O        D 11    N1P
+     O                         NAME      10
+     O                         AMT   J   20
+     O                         INCOMEJ   30
+     O                         BUST  Z   33
+     O                         WAIST Z   36
+     O                         HIPS  Z   39
+     O                         PCT   J   46
+     O        E  2             TOT
+     O                         NAME      10
+     O                         AMTSUMJ   20
+     O                         INCSUMJ   30

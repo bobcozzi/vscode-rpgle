@@ -1,0 +1,39 @@
+      *%METADATA                                                       *
+      * %TEXT List XMP4PF in MDY date order                            *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     F* * * * * * * * * * * * File Specifications * * * * * * * * * * ******
+     FXMP4LT  IP  E           K        DISK
+     FQPRINT  O   F     132     OF     PRINTER
+     I* * * * * * * * * * * * Input Specifications  * * * * * * * * * ******
+     I*
+     I* Program Status Data Structure:    (Program Name)
+     I           SDS
+     I                                     *PROGRAM PGM
+     I*
+     C* * * * * * * * * * * * Calculations  * * * * * * * * * * * * * *******
+     C* * * * * * * * * * * * Subroutines * * * * * * * * * * * * * * *******
+     C           *INZSR    BEGSR
+     C*           -----    -----
+     C* Get current time for 1P Header:
+     C                     TIME           TIME    60
+     C                     ENDSR                           *INZSR
+     C*                    -----
+     O*********************** Output Specifications ************************
+     OQPRINT  H  203   1P
+     O       OR        OFN1P
+     O                         PGM       10
+     O                                   63 'Report'
+     O                                   95 'Date'
+     O                         UDATE Y  104
+     O                         TIME     116 '  :  :  '
+     O                                  127 'Page'
+     O                         PAGE  Z  132
+     O        H  3     1P
+     O       OR        OFN1P
+     O                                   10 'START'
+     O                                   22 'END'
+     O        D  2
+     O                         STRDAT    10 '    /  /  '
+     O                         ENDDAT    21 '    /  /  '
+     O                         TERMDT    32 '    /  /  '

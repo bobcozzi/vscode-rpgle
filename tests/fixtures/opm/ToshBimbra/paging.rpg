@@ -1,0 +1,41 @@
+      *%METADATA                                                       *
+      * %TEXT Page/Roll Keys on a Display File                         *
+      *%EMETADATA                                                      *
+     H*  80 = EOF reached on read of U5PSBCNP in subroutine PAGING
+     H*  81 = TOF reached on read of U5PSBCNP in subroutine PAGING
+     C*
+     C           KEY       IFEQ ROLLUP
+     C           KEY       OREQ ROLLDN
+     C                     EXSR PAGING                      Page Up/Down Pressed
+     C                     ENDIF
+     C*
+     C* * * * * * * * * * *   Subroutines  * * * * * * * * * * * * * * * * **
+     C*          ------    -----
+     C           PAGING    BEGSR
+     C* Process Page Up/Down (Roll) keys
+     C*
+     C           KEY       IFEQ ROLLUP                     PgDn/ROLL UP
+     C                     READ U5PSBCNP                 80EOF
+     C      80   PNKLST    SETLLU5PSBCNP
+     C      80             READ U5PSBCNP                 11Re-read last Record
+     C                     ENDIF
+     C*
+     C           KEY       IFEQ ROLLDN                     PgUp/ROLL DOWN
+     C                     READPU5PSBCNP                 81TOF
+     C      81   PNKLST    SETLLU5PSBCNP
+     C      81             READ U5PSBCNP                 11Re-read first Record
+     C                     ENDIF
+     C*
+     C*  DISPLAY THE NEW KEY IF ROLL WAS SUCCESSFUL (N80 & N81)
+     C           *IN80     IFEQ *OFF
+     C           *IN81     ANDEQ*OFF
+     C                     Z-ADDPNCNO     @5CNO
+     C                     MOVE PNCROP    @5CROP
+     C                     Z-ADDPNPCTP    @5PCTP
+     C                     Z-ADDPNCTNO    @5CTNO
+     C                     Z-ADDPNSQAD    @5SQAD
+     C                     ENDIF
+     C*
+     C                     ENDSR                           END SR PAGING
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

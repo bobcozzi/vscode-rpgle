@@ -1,0 +1,41 @@
+      *%METADATA                                                       *
+      * %TEXT List new logical files                                   *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: LSTNEWFR
+     H*Title: List new logical files.
+     H*Function: Edits the output of the SEU print command to strip
+     H* off headings, sequence numbers, etc. and writes a file
+     H* consisting of Columns 7 - 80 of the DDS source for LFs.
+     H*Called by: LSTNEWF CL program
+     H*External Calls: None
+     H*Compilation Notes/Parameters: None
+     F* * * * * * * * * * *   File Specifications   * * * * * * * * * * * *
+     F*
+     FRAWOUT  IP  E                    DISK
+     FEDTOUT  O   E                    DISK                      A
+     F*
+     C* * * * * * * * * *  Calculations  * * * * * * * * * * * * * * * * * * * *
+     C*
+     C                     SELEC
+     C*                    -----
+     C           MEMBER    WHEQ 'MEMBER'
+     C* Heading line with member name.
+     C                     MOVE *BLANKS   OF1
+     C                     MOVE *BLANKS   OMBR
+     C                     MOVE *BLANKS   OF2
+     C                     WRITEEDTREC                     Blank Line
+     C                     WRITEEDTREC                     Blank Line
+     C                     MOVE 'File: '  OF1       P
+     C                     MOVE MBRNAM    OMBR             Member name
+     C                     WRITEEDTREC
+     C*
+     C           COL6      WHEQ 'A'                        DDS 'A' Spec
+     C                     MOVE F3        OF1              1st part of line
+     C                     MOVE MBRNAM    OMBR             2nd part of line
+     C                     MOVE F4        OF2              3rd part of line
+     C                     WRITEEDTREC
+     C*
+     C                     ENDSL
+     C*                    -----
+     C* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *

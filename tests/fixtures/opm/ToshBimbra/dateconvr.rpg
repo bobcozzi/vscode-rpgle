@@ -1,0 +1,30 @@
+      *%METADATA                                                       *
+      * %TEXT Sample code to convert/validate dates                    *
+      *%EMETADATA                                                      *
+     H* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+     H*Program Name: DATECONVR
+     H*Purpose: Example of validating a date and optionally converting to
+     H*         CCYYMMDD format.
+     H*Notes:
+     H*External Calls: DATECONV (CL)
+     H*Compilation Notes/Parameters: None
+     I* * * * * * * * * * *   Input Specifications  * * * * * * * * * * * *
+     I*
+     I            DS
+     I                                    P   1   40DATE6P
+     I*
+     C* * * * * * * * * * *   Calculations   * * * * * * * * * * * * * * * **
+     C*
+     C                     Z-ADD010100    DATE6P           Screen to packed  */
+     C                     MOVE *BLANK    RVAL
+     C                     CALL 'DATECONV'                 Validate/convert  */
+     C                     PARM           DATE6P           Date from screen  */
+     C                     PARM           RVAL    8        Return Value      */
+     C           RVAL      IFEQ 'BAD     '                 IF RVAL = BAD     */
+     C                     MOVE *ON       *IN25             ERRMSGID USR0520 */
+     C                     MOVE *ON       *IN52             ERROR INDICATOR  */
+     C                     ELSE                            ELSE RVAL = DATE  */
+     C                     MOVE RVAL      XXDATE  80        8-byte Date      */
+     C                     ENDIF                           END RVAL = BAD    */
+     C*                                                                      */
+     C                     MOVE *ON       *INLR

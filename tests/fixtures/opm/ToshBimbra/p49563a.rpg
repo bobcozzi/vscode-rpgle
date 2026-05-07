@@ -1,0 +1,13 @@
+      *%METADATA                                                       *
+      * %TEXT customer source                                          *
+      *%EMETADATA                                                      *
+     FNGSPDF  O   F      92            DISK                      A
+     C                     MOVEL'[^]'     FIELD   3
+     C                     EXCPTOUT
+     C                     MOVE '1'       *INLR
+     ONGSPDF  EADD             OUT
+     O                                   12 '000100000000'
+     O                         FIELD     15
+     O        EADD             OUT
+     O                                   12 '000200000000'
+     O                                   15 '[^]'
