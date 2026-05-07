@@ -647,7 +647,7 @@ export default class Parser {
         lineNumber += 1;
 
         if (baseLine.startsWith(`**`) && baseLine[2] !== `*`) {
-          if (baseLine.toLowerCase() === `**free`) {
+          if (baseLine.toLowerCase().startsWith(`**free`)) {
             // **free only works when set on the first line
             if (lineNumber === 0) {
               isFullyFree = true;
@@ -777,7 +777,11 @@ export default class Parser {
                   const includePath = Parser.getIncludeFromDirective(line);
 
                   if (includePath) {
-                    const include = await this.includeFileFetch(workingUri, includePath);
+                    // Use fileUri (current file) instead of workingUri (root document) to ensure:
+                    // 1. Correct parent file is logged for nested includes
+                    // 2. Member/streamfile resolution caches are scoped per requesting file
+                    // 3. Workspace context resolution uses the actual requesting file
+                    const include = await this.includeFileFetch(fileUri, includePath);
                     if (include.found && include.uri) {
                       if (!scopes[0].includes.some(inc => inc.toPath === include.uri)) {
                         scopes[0].includes.push({
