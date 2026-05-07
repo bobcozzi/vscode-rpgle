@@ -11,7 +11,7 @@ import {
 } from 'vscode-languageserver/node';
 
 import documentSymbolProvider from './providers/documentSymbols';
-import { documents, parser } from './providers';
+import { documents, getParser, opmParser, parser } from './providers';
 import definitionProvider from './providers/definition';
 import { URI } from 'vscode-uri';
 import completionItemProvider from './providers/completionItem';
@@ -125,21 +125,24 @@ connection.onInitialized(() => {
 	handleClientRequests();
 });
 
-parser.setTableFetch(async (table: string, aliases = false): Promise<Declaration[]> => {
+const tableFetch = async (table: string, aliases = false): Promise<Declaration[]> => {
 	if (!languageToolsEnabled) return [];
 
-	console.log(`Server is resolving ${table}`);
+
 
 	const data = await getObjectData(table);
 
-	console.log(`Resolved ${table} and got ${data.length} rows.`);
+
 
 	return dspffdToRecordFormats(data, aliases);
-});
+};
+
+parser.setTableFetch(tableFetch);
+opmParser.setTableFetch(tableFetch);
 
 let fetchingInProgress: { [fetchKey: string]: boolean } = {};
 
-parser.setIncludeFileFetch(async (stringUri: string, includeString: string) => {
+const includeFileFetch = async (stringUri: string, includeString: string) => {
 	const currentUri = URI.parse(stringUri);
 	const uriPath = currentUri.path;
 	// Extract clean filename without query parameters
@@ -315,7 +318,10 @@ parser.setIncludeFileFetch(async (stringUri: string, includeString: string) => {
 			uri: validUri
 		};
 	}
-});
+};
+
+parser.setIncludeFileFetch(includeFileFetch);
+opmParser.setIncludeFileFetch(includeFileFetch);
 
 if (languageToolsEnabled) {
 	// regular language stuff
@@ -361,7 +367,11 @@ function executeParse(uri: string, parseId: number, document: any) {
 	state.parseStartTime = parseStartTime;
 	logWithTimestamp(`Parse started: ${fileName} (parseId: ${parseId})`, LogLevel.DEBUG);
 
-	parser.getDocs(
+
+	const activeParser = getParser(uri);
+
+
+	activeParser.getDocs(
 		uri,
 		document.getText(),
 		{

@@ -29,6 +29,7 @@
 	],
 	"activationEvents": [
 		"onLanguage:rpgle",
+		"onLanguage:rpg",
 		"onCommand:workbench.action.showAllSymbols"
 	],
 	"main": "./out/extension",
