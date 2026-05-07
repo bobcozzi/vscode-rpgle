@@ -436,6 +436,8 @@ export default class Parser {
 
       /** Used for handling multiline statements */
       let currentStmtStart: {content?: string, line: number, index: number}|undefined;
+      /** True when the previous continuation line ended with `...` (direct concat, trim next line) */
+      let dotsConcat = false;
 
       let directIfScope: {condition: boolean}[] = [];
 
@@ -869,7 +871,11 @@ export default class Parser {
 
               if (currentStmtStart.content) {
                 // This means the line is just part of the end of the last statement as well.
-                line = currentStmtStart.content + getValidStatement(baseLine);
+                // If the previous continuation line ended with `...`, trim leading whitespace
+                // from this line so the name/expression segments join correctly.
+                const validStmt = getValidStatement(baseLine);
+                line = currentStmtStart.content + (dotsConcat ? validStmt.trimStart() : validStmt);
+                dotsConcat = false;
 
                 tokens = Parser.lineTokens(line, currentStmtStart.line, currentStmtStart.index);
                 partsLower = tokens.filter(piece => piece.value).map(piece => piece.value);
@@ -879,12 +885,23 @@ export default class Parser {
               }
 
             } else if (!line.endsWith(`;`)) {
-              currentStmtStart.content = (currentStmtStart.content || ``) + baseLine;
+              // If the previous line ended with `...`, trim leading whitespace before appending.
+              const trimmedBase = dotsConcat ? baseLine.trimStart() : baseLine;
+              dotsConcat = false;
 
-              if (currentStmtStart.content.endsWith(`-`))
+              currentStmtStart.content = (currentStmtStart.content || ``) + trimmedBase;
+
+              if (currentStmtStart.content.endsWith(`-`)) {
                 currentStmtStart.content = currentStmtStart.content.substring(0, currentStmtStart.content.length - 1) + ` `;
-
-              currentStmtStart.content += EOL;
+                currentStmtStart.content += EOL;
+              } else if (currentStmtStart.content.trimEnd().endsWith(`...`)) {
+                // Strip `...` and directly concatenate the next line (no EOL separator).
+                // This matches the IBM i RPG IV free-format continuation rule.
+                currentStmtStart.content = currentStmtStart.content.trimEnd().slice(0, -3);
+                dotsConcat = true;
+              } else {
+                currentStmtStart.content += EOL;
+              }
 
               continue;
             }
