@@ -9,7 +9,7 @@ async function readOpmFixture(fixturePath: string): Promise<string> {
 
 async function debugTest() {
   const parser = new OpmParser();
-  const fileUri = path.join(`EdgeCaseTests`, `lda.rpg`);
+  const fileUri = `ldaMarker.rpg`;
   const content = await readOpmFixture(fileUri);
   
   console.log('Content:', content);
