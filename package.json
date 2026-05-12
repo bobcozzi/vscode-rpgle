@@ -82,13 +82,13 @@
 				"command": "vscode-rpgle.assist.launchUI",
 				"title": "Launch Column Assistant",
 				"category": "RPGLE",
-				"enablement": "editorLangId == rpgle"
+				"enablement": "editorLangId == rpgle || editorLangId == rpg"
 			},
 			{
 				"command": "vscode-rpgle.assist.toggleFixedRuler",
 				"title": "Toggle Inline Editor Helper",
 				"category": "RPGLE",
-				"enablement": "editorLangId == rpgle"
+				"enablement": "editorLangId == rpgle || editorLangId == rpg"
 			},
 			{
 				"command": "vscode-rpgle.server.reloadCache",
@@ -102,14 +102,14 @@
 				"title": "Move Left",
 				"category": "RPGLE Fixed-Format",
 				"icon": "$(arrow-left)",
-				"when": "editorLangId == rpgle"
+				"when": "editorLangId == rpgle || editorLangId == rpg"
 			},
 			{
 				"command": "vscode-rpgle.assist.moveRight",
 				"title": "Move Right",
 				"category": "RPGLE Fixed-Format",
 				"icon": "$(arrow-right)",
-				"when": "editorLangId == rpgle"
+				"when": "editorLangId == rpgle || editorLangId == rpg"
 			}
 		],
 		"keybindings": [
@@ -117,25 +117,25 @@
 				"command": "vscode-rpgle.assist.launchUI",
 				"key": "ctrl+shift+f4",
 				"mac": "cmd+shift+f4",
-				"when": "editorLangId == rpgle"
+				"when": "editorLangId == rpgle || editorLangId == rpg"
 			},
 			{
 				"command": "vscode-rpgle.assist.toggleFixedRuler",
 				"key": "shift+f4",
 				"mac": "shift+f4",
-				"when": "editorLangId == rpgle"
+				"when": "editorLangId == rpgle || editorLangId == rpg"
 			},
 			{
 				"command": "vscode-rpgle.assist.moveLeft",
 				"key": "ctrl+[",
 				"mac": "ctrl+[",
-				"when": "editorLangId == rpgle"
+				"when": "editorLangId == rpgle || editorLangId == rpg"
 			},
 			{
 				"command": "vscode-rpgle.assist.moveRight",
 				"key": "ctrl+]",
 				"mac": "ctrl+]",
-				"when": "editorLangId == rpgle"
+				"when": "editorLangId == rpgle || editorLangId == rpg"
 			}
 		],
 		"menus": {
