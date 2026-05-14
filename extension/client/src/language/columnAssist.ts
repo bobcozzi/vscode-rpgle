@@ -35,6 +35,10 @@ const getAreasForLine = (line: string, index: number, languageId: string = 'rpgl
   const specDefinitions = languageId === 'rpg' ? opmSpecs : specs;
   const rulerDefinitions = languageId === 'rpg' ? opmSpecRulers : SpecRulers;
 
+  // Use OPM specs for .rpg files, ILE specs for .rpgle files
+  const specDefinitions = languageId === 'rpg' ? opmSpecs : specs;
+  const rulerDefinitions = languageId === 'rpg' ? opmSpecRulers : SpecRulers;
+
   const specLetter = line[5].toUpperCase();
   if (specDefinitions[specLetter]) {
     const specification = specDefinitions[specLetter];

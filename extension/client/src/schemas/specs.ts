@@ -6,8 +6,9 @@ export const SpecRulers: {[spec: string]: string} = {
   D: `.....DName+++++++++++ETDsFrom+++To/L+++IDc.Keywords+++++++++++++++++++++++++++++`,
   F: `.....FFilename++IPEASFRlen+LKlen+AIDevice+.Keywords+++++++++++++++++++++++++++++`,
   I: `.....IFilename++SqNORiPos1+NCCPos2+NCCPos3+NCCDcField+++++++++L1M1FrPlMnZr......`,
-  O: `.....OFilename++DF..N01N02N03Excnam++++B++A++Sb+Sa+.Constant/Editword/DateFormat`,
+  O: `.....OFilename++DF..N01N02N03Name++++++B++A++Sb+Sa+.Constant/Editword+++++++++++`,
   P: `.....PName+++++++++++..T...................Keywords+++++++++++++++++++++++++++++`
+  // E, H specs are OPM-only - see opmSpecRulers below
 }
 
 export const specs: {[spec: string]: SpecFieldDef[]} = {
@@ -79,6 +80,7 @@ export const specs: {[spec: string]: SpecFieldDef[]} = {
       end: 75
     }
   ],
+  // Note: C-spec above is for RPGLE (ILE). OPM RPG III has different columns - see opmSpecs below
 
   D: [
     {start: 6, end: 20, name: `Name`, id: `name`},
@@ -152,6 +154,7 @@ export const specs: {[spec: string]: SpecFieldDef[]} = {
     {start: 35, end: 41, name: `Device`, id: `device`},
     {start: 43, end: 79, name: `Keywords`, id: `keywords`}
   ],
+  // E, H, I, O specs are OPM-only or have significant differences - see opmSpecs below
   P: [
     {start: 6, end: 20, name: `Name`, id: `name`},
     {start: 23, end: 23, name: `Begin/End Procedure`, id: `proc`},
